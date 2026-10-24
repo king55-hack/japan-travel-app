@@ -67,7 +67,7 @@ const go = v => { location.hash = '#/' + v; };
 function render() {
   const v = view();
   document.documentElement.lang = st.lang === 'np' ? 'ne' : st.lang === 'en' ? 'en' : 'ja';
-  const heads = { home: '', map: 'map', phrases: 'phrases', chat: 'ai', sos: 'emergency', menu: 'menu', wait: 'wait', plan: 'plan', fare: 'fare' };
+  const heads = { home: '', map: 'map', phrases: 'phrases', chat: 'ai', sos: 'emergency', menu: 'menu', wait: 'wait', plan: 'plan', fare: 'fare', help: 'help_btn', nearby: 'near_you', listen: 'listen', tips: 'tips' };
   let html = '';
   if (v !== 'lang') {
     html += `<header class="top">
@@ -113,9 +113,11 @@ const VIEWS = {
   },
 
   home() {
-    const cards = [['map', '🗺️', 'map', 'map_sub'], ['phrases', '💬', 'phrases', 'phr_sub'], ['menu', '📷', 'menu', 'menu_sub'], ['wait', '⏱️', 'wait', 'wait_sub'], ['plan', '🧭', 'plan', 'plan_sub'], ['fare', '🚃', 'fare', 'fare_sub']];
+    const cards = [['map', '🗺️', 'map', 'map_sub'], ['phrases', '💬', 'phrases', 'phr_sub'], ['menu', '📷', 'menu', 'menu_sub'], ['wait', '⏱️', 'wait', 'wait_sub'], ['plan', '🧭', 'plan', 'plan_sub'], ['fare', '🚃', 'fare', 'fare_sub'], ['listen', '🎧', 'listen', 'listen_sub'], ['tips', '💡', 'tips', 'tips_sub']];
     const top = topPhrases(4);
-    return `<div class="hello" data-a="nav" data-v="chat"><div class="avatar">🗾</div><div><b>${tr('greet_home')}</b><div class="badge">${tr('demo_ai')}</div></div></div>
+    return `<a class="helpbig" href="#/help"><span class="hb">🆘</span><div><b>${tr('help_btn')}</b><small>${tr('help_sub')}</small></div></a>
+      ${nearStrip()}
+      <div class="hello" data-a="nav" data-v="chat"><div class="avatar">🗾</div><div><b>${tr('greet_home')}</b><div class="badge">${tr('demo_ai')}</div></div></div>
       <div class="cards">${cards.map(([v, ic, a, b]) => `<a class="card" href="#/${v}"><span class="ic">${ic}</span><b>${tr(a)}</b><small>${tr(b)}</small></a>`).join('')}</div>
       <h3>${tr('most_used')} <a href="#/phrases" class="more">${tr('see_all')} ›</a></h3>
       ${top.map(phraseCard).join('')}
@@ -123,7 +125,7 @@ const VIEWS = {
   },
 
   phrases() {
-    const cats = ['top', 'emergency', 'basic', 'food', 'move', 'shop'];
+    const cats = ['top', 'emergency', 'answer', 'basic', 'food', 'move', 'shop'];
     let list;
     const q = st.q.trim().toLowerCase();
     if (q) list = PHRASES.filter(p => [p.en, p.np, p.ja, p.hi, p.ro].some(x => x.toLowerCase().includes(q)));
@@ -317,13 +319,20 @@ async function initMapView() {
 }
 const MAP_QUERY = { police: 'police station', hospital: 'hospital', trash: 'trash can', shop: 'convenience store', toilet: 'public toilet', atm: 'ATM' };
 
-async function runMapSearch(useGoogle) {
-  const seq = ++st.mapSeq, type = st.mapType;
-  st.markers.forEach(m => m.setMap(null)); st.markers = [];
-  let list = [], sample = true;
-  if (useGoogle && type !== 'trash') {
-    try {
-      // Places API (New); needs "Places API (New)" enabled on the key's project
+// ---------- nearby search (Google Places New / OpenStreetMap / sample) ----------
+const nearCache = new Map();
+function placesNear(type) {
+  const key = `${type}:${st.pos.lat.toFixed(3)},${st.pos.lng.toFixed(3)}`;
+  if (!nearCache.has(key)) nearCache.set(key, fetchNear(type));
+  return nearCache.get(key);
+}
+async function fetchNear(type) {
+  let list = [];
+  try {
+    if (type === 'trash') list = await trashNear();
+    else if (API_KEY && !st.gmFail) {
+      await loadGoogle();
+      // Places API (New) must be enabled on the key's project
       const { Place } = await google.maps.importLibrary('places');
       const { places } = await Place.searchNearby({
         fields: ['displayName', 'location', 'formattedAddress'],
@@ -331,43 +340,180 @@ async function runMapSearch(useGoogle) {
         includedPrimaryTypes: [PLACE_TYPES[type].type],
         maxResultCount: 12,
       });
-      if (places && places.length) {
-        sample = false;
-        list = places.map(p => ({ name: p.displayName, sub: p.formattedAddress, lat: p.location.lat(), lng: p.location.lng() }));
-      }
-    } catch (err) { console.warn('Places search failed, using sample data:', err.message || err); }
-  }
-  if (!list.length) list = POI.filter(p => p.type === type).map(p => ({ name: nm(p), lat: p.lat, lng: p.lng }));
+      list = (places || []).map(p => ({ name: p.displayName, sub: p.formattedAddress, lat: p.location.lat(), lng: p.location.lng() }));
+    }
+  } catch (err) { console.warn('Nearby search failed, using sample data:', err.message || err); }
+  const sample = !list.length;
+  if (sample) list = POI.filter(p => p.type === type).map(p => ({ name: nm(p), lat: p.lat, lng: p.lng }));
   list = list.map(p => ({ ...p, km: hav(st.pos, p) })).sort((a, b) => a.km - b.km);
   const close = list.filter(p => p.km < 30);
-  list = (close.length ? close : list).slice(0, 8);
+  return { list: (close.length ? close : list).slice(0, 10), sample };
+}
+// trash bins: OpenStreetMap (free, no key) + pins added by travellers on this device
+async function trashNear() {
+  const here = st.pos;
+  const pins = store.get('bins', []).filter(b => hav(here, b) < 1).map(b => ({ name: null, pin: true, lat: b.lat, lng: b.lng }));
+  let osm = [];
+  try {
+    // public Overpass servers can be slow: ask two in parallel and take the first good answer
+    const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 20000);
+    const q = encodeURIComponent(`[out:json][timeout:15];node(around:800,${here.lat},${here.lng})[amenity=waste_basket];out 25;`);
+    const ask = base => fetch(`${base}?data=${q}`, { signal: ctl.signal }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+    const j = await Promise.any(['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'].map(ask));
+    clearTimeout(to); ctl.abort();
+    osm = j.elements.map(e => ({ name: null, lat: e.lat, lng: e.lon }));
+  } catch (err) { console.warn('Overpass failed:', err.message || err); }
+  return [...pins, ...osm];
+}
+const pname = (p, type) => (p.name || tr('c_' + type)) + (p.pin ? ' 📌' : '');
+
+async function runMapSearch(useGoogle) {
+  const seq = ++st.mapSeq, type = st.mapType;
+  st.markers.forEach(m => m.setMap(null)); st.markers = [];
+  const sheet = $('#sheet'); if (sheet) sheet.innerHTML = `<div class="grab"></div><div class="scan"><div class="spin"></div>${tr('loading')}</div>`;
+  const r = await placesNear(type);
+  const list = r.list.slice(0, 8), sample = r.sample;
   if (seq !== st.mapSeq || view() !== 'map') return;
   if (useGoogle && st.map) {
     const bounds = new google.maps.LatLngBounds(st.pos);
-    list.forEach(p => {
-      const mk = new google.maps.Marker({ map: st.map, position: p, title: p.name, label: { text: PLACE_TYPES[type].icon, fontSize: '16px' } });
-      mk.addListener('click', () => { const el = document.getElementById('poi-' + list.indexOf(p)); if (el) el.scrollIntoView({ block: 'nearest' }); });
+    list.forEach((p, i) => {
+      const mk = new google.maps.Marker({ map: st.map, position: p, title: pname(p, type), label: { text: PLACE_TYPES[type].icon, fontSize: '16px' } });
+      mk.addListener('click', () => { const el = document.getElementById('poi-' + i); if (el) el.scrollIntoView({ block: 'nearest' }); });
       st.markers.push(mk); bounds.extend(p);
     });
     if (list.length) { st.map.fitBounds(bounds, 40); google.maps.event.addListenerOnce(st.map, 'idle', () => { if (st.map.getZoom() > 17) st.map.setZoom(17); }); }
   }
-  const far = list.length && list[0].km > 30;
-  $('#sheet').innerHTML = `<div class="grab"></div><b>${PLACE_TYPES[type].icon} ${type === 'police' ? tr('nearest_police') : tr('c_' + type)}</b>
-    ${far ? `<p class="muted small">${tr('sample_poi_note')}</p>` : ''}
-    ${list.length ? list.map((p, i) => `<div class="box row poi" id="poi-${i}"><div><b>${esc(p.name)}</b><div class="small muted">${fmtDist(p.km)} · ${walkMin(p.km)} ${tr('walk_min')}${p.sub ? ' · ' + esc(p.sub) : ''}</div></div>
+  $('#sheet').innerHTML = `<div class="grab"></div><div class="row"><b>${PLACE_TYPES[type].icon} ${type === 'police' ? tr('nearest_police') : tr('c_' + type)}</b>
+      <button class="chip" data-a="recenter">📍 ${tr('recenter')}</button></div>
+    ${st.pos.real ? '' : `<p class="muted small">${tr('using_sample')} <button class="chip" data-a="allowloc">${tr('allow_loc')}</button></p>`}
+    ${list.length ? list.map((p, i) => `<div class="box row poi" id="poi-${i}"><div><b>${esc(pname(p, type))}</b><div class="small muted">${fmtDist(p.km)} · ${walkMin(p.km)} ${tr('walk_min')}${p.sub ? ' · ' + esc(p.sub) : ''}</div></div>
       <a class="btn" target="_blank" rel="noopener" href="${dirUrl(p)}">${tr('go')} ▶</a></div>`).join('') : `<p class="muted">${tr('nothing')}</p>`}
     ${type === 'police' ? `<div class="two"><a class="btn sos" href="tel:110">📞 110</a><button class="btn" data-a="staff" data-v="police">🗣 ${tr('say_phrase')}</button></div>` : ''}
+    ${type === 'trash' ? `<button class="btn" data-a="addbin">🗑️ ${tr('add_bin')}</button><p class="muted small">${tr('from_osm')}</p>` : ''}
     ${sample ? `<p class="muted small">${tr('sample_poi_note')}</p>` : ''}`;
 }
 
-function locate(after) {
-  if (!navigator.geolocation) return;
-  navigator.geolocation.getCurrentPosition(p => {
-    st.pos = { lat: p.coords.latitude, lng: p.coords.longitude, real: true };
-    if (st.me) st.me.setPosition(st.pos);
-    if (after) after();
-  }, () => { }, { enableHighAccuracy: true, timeout: 8000 });
+// ---------- live location ----------
+let watchId = null;
+function startLocation() {
+  if (!navigator.geolocation || watchId !== null) return;
+  watchId = navigator.geolocation.watchPosition(onFix, () => { watchId = null; }, { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 });
 }
+function onFix(p) {
+  const first = !st.pos.real;
+  const next = { lat: p.coords.latitude, lng: p.coords.longitude, real: true, acc: p.coords.accuracy };
+  const moved = hav(st.pos, next) * 1000;
+  st.pos = next;
+  if (st.me) st.me.setPosition(next);
+  if (!first && moved < 40) return;
+  nearCache.clear(); st.addr = null;
+  const v = view();
+  if (v === 'map') { if (st.map) st.map.setCenter(next); runMapSearch(!!st.map && !st.gmFail); }
+  else if (['home', 'nearby', 'sos', 'help'].includes(v)) render();
+  if (st.overlay && st.overlay.isLoc) { st.overlay = locOverlay(); renderOverlay(); }
+}
+async function address() {
+  if (st.addr != null) return st.addr;
+  if (!API_KEY || st.gmFail || !st.pos.real) return '';
+  try {
+    await loadGoogle();
+    const { Geocoder } = await google.maps.importLibrary('geocoding');
+    const r = await new Geocoder().geocode({ location: st.pos });
+    st.addr = (r.results[0] && r.results[0].formatted_address) || '';
+  } catch { st.addr = ''; }
+  return st.addr;
+}
+function locOverlay() {
+  const url = `https://www.google.com/maps?q=${st.pos.lat},${st.pos.lng}`;
+  return {
+    isLoc: true, hi: 'たすけて ください。いま ここに います。', ja: '助けてください。今ここにいます。', src: tr('loc_text'), speak: '助けてください。今ここにいます。',
+    extra: `<div class="ov-loc">📍 ${st.pos.lat.toFixed(5)}, ${st.pos.lng.toFixed(5)}${st.pos.real ? '' : ' (sample)'}${st.addr ? '<br>' + esc(st.addr) : ''}<br><a href="${url}" target="_blank" rel="noopener">${url}</a><br><button class="btn" data-a="copyloc">${tr('copy')}</button></div>`,
+  };
+}
+const locBanner = () => (st.pos.real
+  ? `<small class="ok">● ${tr('loc_ok')}${st.pos.acc ? ` (±${Math.round(st.pos.acc)} m)` : ''}</small>`
+  : `<div class="notice"><small>${tr('using_sample')}</small><button class="btn" data-a="allowloc">${tr('allow_loc')}</button></div>`);
+
+// ---------- near-you strips ----------
+const NEAR_HOME = ['police', 'hospital', 'shop', 'toilet', 'trash'];
+const NEAR_ALL = ['police', 'hospital', 'trash', 'shop', 'toilet', 'atm'];
+const nearStrip = () => `<div class="box near"><div class="row"><b>📍 ${tr('near_you')}</b><a class="more" href="#/nearby">${tr('see_all')} ›</a></div>${locBanner()}<div id="nearrows" class="nearrows"><small class="muted">${tr('loading')}</small></div></div>`;
+function nearRow(type, p, big) {
+  return `<div class="nrow ${big ? 'box' : ''}"><div><b>${PLACE_TYPES[type].icon} ${tr('c_' + type)}</b><div class="small">${esc(pname(p, type))} · <span class="muted">${fmtDist(p.km)} · ${walkMin(p.km)} ${tr('walk_min')}</span></div></div>
+    <div class="nbtns"><a class="btn" target="_blank" rel="noopener" href="${dirUrl(p)}">${tr('go')}</a><button class="btn" data-a="tomap" data-v="${type}">🗺</button></div></div>`;
+}
+async function fillNear(types, hostSel, big) {
+  const host = $(hostSel); if (!host) return;
+  const res = await Promise.all(types.map(t => placesNear(t).then(r => [t, r.list[0]])));
+  const h = $(hostSel); if (!h) return;
+  h.innerHTML = res.filter(([, p]) => p).map(([t, p]) => nearRow(t, p, big)).join('') || `<small class="muted">${tr('nothing')}</small>`;
+}
+function sightsNear() {
+  const list = SPOTS.map(s => ({ ...s, km: hav(st.pos, s) })).sort((a, b) => a.km - b.km).slice(0, 4);
+  return list.map(s => `<div class="box row"><div><b>${esc(nm(s))}</b><div class="small muted">${fmtDist(s.km)}</div></div><a class="btn" target="_blank" rel="noopener" href="${dirUrl(s, 'transit')}">${tr('go')} ▶</a></div>`).join('');
+}
+
+// ---------- extra views ----------
+VIEWS.nearby = () => `${locBanner()}<div class="box fill small" id="addr">📍 ${st.pos.lat.toFixed(4)}, ${st.pos.lng.toFixed(4)}</div>
+  <div id="nearlist" class="nearlist"><small class="muted">${tr('loading')}</small></div>
+  <h3>${tr('sights_near')}</h3>${sightsNear()}
+  <button class="btn" data-a="addbin">🗑️ ${tr('add_bin')}</button><p class="muted small">${tr('from_osm')}</p>`;
+
+VIEWS.help = () => {
+  if (!st.help) {
+    return `<h2 class="q">${tr('help_q')}</h2>${HELP.map(h => `<button class="btn big helpopt" data-a="hopt" data-v="${h.id}"><span>${h.ic}</span> ${tr('h_' + h.id)}</button>`).join('')}
+      <div class="two"><a class="btn sos" href="tel:110">🚓 110</a><a class="btn sos" href="tel:119">🚑 119</a></div>`;
+  }
+  const h = HELP.find(x => x.id === st.help);
+  return `<button class="chip" data-a="hback">← ${tr('h_' + h.id)}</button>
+    ${h.tels.length ? `<div class="two">${h.tels.map(n => `<a class="btn sos" href="tel:${n}">📞 ${n.length === 3 ? n : EMERGENCY.find(e => e.tel === n).num}</a>`).join('')}</div>` : ''}
+    ${h.poi ? `<h3>${tr('step_near')}</h3><div id="helpnear" class="nearlist"><small class="muted">${tr('loading')}</small></div>` : ''}
+    ${h.listen ? `<a class="btn pri" href="#/listen">🎧 ${tr('listen')} — ${tr('listen_sub')}</a>` : ''}
+    <h3>${tr('step_phr')}</h3>${h.phrases.map(id => phraseCard(PHRASES.find(p => p.id === id))).join('')}`;
+};
+
+VIEWS.listen = () => {
+  const l = st.listen || { state: 'idle' };
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let out = '';
+  if (l.state === 'listening') out = `<div class="scan"><div class="spin"></div>${tr('listening')}</div>`;
+  else if (l.state === 'err') out = `<p class="muted">${tr('mic_denied')}</p>`;
+  else if (l.state === 'done') {
+    out = `<div class="box"><small class="muted">${tr('heard')}</small><div class="big" lang="ja">${esc(l.text)}</div></div>` +
+      (l.matches.length ? l.matches.map(e => `<div class="box fill"><div class="big" lang="ja">${esc(e.ja)}</div><b>→ ${esc(e.n[L()])}</b></div>`).join('') : `<p class="muted">${tr('no_match')}</p>`);
+  }
+  return `<div class="badge">${tr('demo')}</div>
+    ${SR ? `<button class="btn pri big micbig" data-a="listenmic">🎤 ${tr('tap_speak')}</button>` : `<p class="muted">${tr('listen_nosup')}</p>`}
+    <div id="listenout">${out}</div>
+    <h3>${tr('cat_answer')}</h3><div class="chips">${PHRASES.filter(p => p.cat === 'answer').map(p => `<button class="chip" data-a="staff" data-v="${p.id}">${esc(pick(p))}</button>`).join('')}</div>
+    <p class="muted small">${tr('listen_note')}</p>`;
+};
+const normJa = s => s.replace(/[\s、。，,.!?！？]/g, '');
+function runListen() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition; if (!SR) return;
+  const r = new SR(); r.lang = 'ja-JP'; r.interimResults = false; r.maxAlternatives = 1;
+  st.listen = { state: 'listening' }; render();
+  let got = false;
+  r.onresult = ev => {
+    got = true;
+    const text = ev.results[0][0].transcript, n = normJa(text);
+    const matches = LISTEN_DICT.filter(e => n.includes(normJa(e.ja)) || n.includes(e.hi) || (n.length >= 3 && normJa(e.ja).includes(n)));
+    st.listen = { state: 'done', text, matches };
+  };
+  r.onerror = () => { st.listen = { state: 'err' }; };
+  r.onend = () => { if (!got && st.listen.state === 'listening') st.listen = { state: 'err' }; if (view() === 'listen') render(); };
+  try { r.start(); } catch { st.listen = { state: 'err' }; render(); }
+}
+
+VIEWS.tips = () => `<p class="muted">${tr('tips_sub')}</p>${TIPS.map(([ic, tx]) => `<div class="box row tip"><span class="ic">${ic}</span><div>${esc(tx[L()])}</div></div>`).join('')}`;
+
+AFTER.home = () => fillNear(NEAR_HOME, '#nearrows', false);
+AFTER.nearby = () => {
+  fillNear(NEAR_ALL, '#nearlist', true);
+  address().then(a => { const el = $('#addr'); if (el && a) el.innerHTML = `📍 ${tr('you_near')}: <b>${esc(a)}</b>`; });
+};
+AFTER.help = () => { if (st.help) { const h = HELP.find(x => x.id === st.help); if (h.poi) fillNear([h.poi], '#helpnear', true); } };
+AFTER.sos = () => { startLocation(); };
 
 // ---------- dummy AI (keyword / intent scoring) ----------
 const INTENTS = [
@@ -480,7 +626,7 @@ document.addEventListener('click', e => {
   const a = el.dataset.a, v = el.dataset.v;
   const A = {
     setlang() { st.lang = v; store.set('lang', v); render(); },
-    start() { st.chosen = true; store.set('lang', st.lang); go('home'); render(); },
+    start() { st.chosen = true; store.set('lang', st.lang); startLocation(); go('home'); render(); },
     nav() { go(v); },
     cat() { st.cat = v; st.q = ''; render(); },
     say() { const p = PHRASES.find(x => x.id === v); bump(v); speak(p.ja); },
@@ -489,12 +635,22 @@ document.addEventListener('click', e => {
     ovclose() { st.overlay = null; renderOverlay(); },
     maptype() { st.mapType = v; render(); },
     myloc() {
-      const url = `https://www.google.com/maps?q=${st.pos.lat},${st.pos.lng}`;
-      st.overlay = { hi: 'たすけて ください。いま ここに います。', ja: '助けてください。今ここにいます。', src: `${tr('loc_text')}`, speak: '助けてください。今ここにいます。',
-        extra: `<div class="ov-loc">📍 ${st.pos.lat.toFixed(5)}, ${st.pos.lng.toFixed(5)}${st.pos.real ? '' : ' (sample)'}<br><a href="${url}" target="_blank" rel="noopener">${url}</a><br><button class="btn" data-a="copyloc">${tr('copy')}</button></div>` };
-      renderOverlay();
-      if (!st.pos.real) locate(() => A.myloc());
+      startLocation();
+      st.overlay = locOverlay(); renderOverlay();
+      address().then(() => { if (st.overlay && st.overlay.isLoc) { st.overlay = locOverlay(); renderOverlay(); } });
     },
+    tomap() { st.mapType = v; go('map'); },
+    allowloc() { startLocation(); },
+    recenter() { startLocation(); if (st.map) st.map.setCenter(st.pos); },
+    addbin() {
+      const bins = store.get('bins', []); bins.push({ lat: st.pos.lat, lng: st.pos.lng, t: Date.now() }); store.set('bins', bins.slice(-200));
+      [...nearCache.keys()].filter(k => k.startsWith('trash:')).forEach(k => nearCache.delete(k));
+      el.textContent = '✓ ' + tr('bin_added');
+      setTimeout(() => { if (view() === 'map') runMapSearch(!!st.map && !st.gmFail); else if (view() === 'nearby') render(); }, 900);
+    },
+    hopt() { st.help = v; render(); },
+    hback() { st.help = null; render(); },
+    listenmic() { runListen(); },
     copyloc() { const txt = `${tr('loc_text')} https://www.google.com/maps?q=${st.pos.lat},${st.pos.lng}`; navigator.clipboard?.writeText(txt).then(() => { el.textContent = tr('copied'); }, () => { }); },
     quick() { sendChat(v); },
     mic() {
@@ -546,9 +702,10 @@ function startScan(idx) {
   const m = st.menu; m.idx = idx; m.items = null; m.scanning = true; m.filter = 'all'; render();
   setTimeout(() => { m.scanning = false; m.items = MENUS[idx].items; if (view() === 'menu') render(); }, 1300);
 }
-window.addEventListener('hashchange', () => { if (st.overlay) st.overlay = null; render(); });
+window.addEventListener('hashchange', () => { if (st.overlay) st.overlay = null; if (view() !== 'help') st.help = null; render(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && st.overlay) { st.overlay = null; renderOverlay(); } });
 
-locate(() => { if (view() === 'map') initMapView(); });
+if (st.chosen) startLocation();
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { });
 render();
 })();
