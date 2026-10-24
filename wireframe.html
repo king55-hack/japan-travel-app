@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Japan Travel Wireframe</title>
+<style>
+:root{--bg:#f1f1ef;--ink:#222;--mute:#777;--line:#bbb;--fill:#e4e4e1;--fill2:#d3d3cf;--card:#fff;--hot:#c0392b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,"Yu Gothic","Noto Sans JP",sans-serif}
+header.top{padding:28px 20px 8px;max-width:1200px;margin:auto}
+h1{margin:0;font-size:26px}
+.sub{color:var(--mute);margin-top:4px}
+.tag{display:inline-block;font-size:11px;border:1px dashed var(--mute);padding:1px 7px;border-radius:10px;color:var(--mute)}
+nav.langs{max-width:1200px;margin:10px auto;padding:0 20px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+nav.langs button{border:1.5px solid var(--ink);background:#fff;padding:5px 12px;border-radius:6px;cursor:pointer;font:inherit}
+nav.langs button.on{background:var(--ink);color:#fff}
+section{max-width:1200px;margin:auto;padding:14px 20px}
+h2{font-size:17px;border-bottom:2px solid var(--ink);padding-bottom:4px;margin:24px 0 12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:26px;justify-items:center}
+.screen{width:290px}
+.screen>.cap{font-weight:700;margin:0 0 6px}
+.screen>.note{font-size:12px;color:var(--mute);margin-top:6px}
+.phone{width:290px;height:580px;border:3px solid var(--ink);border-radius:26px;background:var(--card);overflow:hidden;display:flex;flex-direction:column;position:relative}
+.bar{height:26px;background:var(--fill);font-size:10px;display:flex;justify-content:space-between;padding:6px 14px;color:var(--mute)}
+.hd{padding:8px 12px;border-bottom:1.5px solid var(--ink);display:flex;align-items:center;gap:8px;font-weight:700}
+.hd .sp{flex:1}
+.body{flex:1;overflow:hidden;padding:10px 12px;display:flex;flex-direction:column;gap:8px;position:relative}
+.tabs{display:flex;border-top:1.5px solid var(--ink);background:#fafafa}
+.tabs div{flex:1;text-align:center;font-size:10px;padding:6px 0}
+.tabs div b{display:block;font-size:15px;line-height:1}
+.tabs .on{background:var(--fill2);font-weight:700}
+.box{border:1.5px solid var(--ink);border-radius:8px;padding:8px}
+.dash{border:1.5px dashed var(--mute);border-radius:8px;padding:8px;color:var(--mute)}
+.fill{background:var(--fill);border-radius:8px;padding:8px}
+.row{display:flex;gap:6px;align-items:center}
+.row>*{flex:1}
+.btn{border:1.5px solid var(--ink);border-radius:8px;padding:8px;text-align:center;background:#fff;font-weight:600}
+.btn.pri{background:var(--ink);color:#fff}
+.btn.sos{background:var(--hot);color:#fff;border-color:var(--hot)}
+.chip{display:inline-block;border:1.5px solid var(--ink);border-radius:14px;padding:2px 9px;font-size:11px;margin:0 3px 4px 0;background:#fff}
+.chip.on{background:var(--ink);color:#fff}
+.ph{background:repeating-linear-gradient(45deg,var(--fill),var(--fill) 8px,#ececea 8px,#ececea 16px);border:1.5px solid var(--ink);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:12px;text-align:center}
+.small{font-size:11px;color:var(--mute)}
+.big{font-size:22px;font-weight:700}
+.pin{position:absolute;font-size:18px}
+.demo{background:#fff6c9;border:1px solid #d9c24a;font-size:10px;padding:1px 6px;border-radius:8px;color:#6b5a00;font-weight:600}
+.bubble{border:1.5px solid var(--ink);border-radius:12px;padding:6px 9px;max-width:85%;font-size:12px}
+.bubble.me{align-self:flex-end;background:var(--fill)}
+.bar2{height:8px;background:var(--fill2);border-radius:4px;overflow:hidden}
+.bar2 i{display:block;height:100%;background:var(--ink)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:2px solid var(--ink);border-radius:16px 16px 0 0;padding:8px 12px;display:flex;flex-direction:column;gap:6px}
+.grab{width:40px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 2px}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.flow .n{border:1.5px solid var(--ink);background:#fff;border-radius:8px;padding:6px 10px;font-weight:600}
+.flow .a{color:var(--mute)}
+table{border-collapse:collapse;width:100%;background:#fff}
+td,th{border:1.5px solid var(--ink);padding:6px 9px;text-align:left;vertical-align:top;font-size:13px}
+th{background:var(--fill)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.cards .box{background:#fff}
+footer{max-width:1200px;margin:20px auto 40px;padding:0 20px;color:var(--mute);font-size:12px}
+.full{background:#111;color:#fff;border-radius:0;flex:1;justify-content:center;align-items:center;text-align:center}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>JAPAN TRAVEL &mdash; Wireframe v1 <span class="tag">hackathon / demo build</span></h1>
+  <div class="sub">日本旅行のぜんぶを、ひとつのアプリで &nbsp;|&nbsp; <i>Nihon no ryokou wa kono hitotsu no apuri de</i> &nbsp;|&nbsp; Mobile-first web app (PWA)</div>
+</header>
+
+<nav class="langs">
+  <span class="small">Preview language (Phrases screen):</span>
+  <button data-l="en" class="on">English</button>
+  <button data-l="np">नेपाली</button>
+  <button data-l="jp">日本語</button>
+  <button data-l="hi">ひらがな</button>
+</nav>
+
+<section>
+  <h2>0. Flow (sitemap)</h2>
+  <div class="flow">
+    <span class="n">Language select</span><span class="a">→</span>
+    <span class="n">Home</span><span class="a">→</span>
+    <span class="n">Map</span><span class="a">/</span>
+    <span class="n">Phrases</span><span class="a">/</span>
+    <span class="n">Menu photo</span><span class="a">/</span>
+    <span class="n">Wait times</span><span class="a">/</span>
+    <span class="n">AI Guide</span><span class="a">/</span>
+    <span class="n">Trip Plan</span>
+  </div>
+  <p class="small">The red <b>SOS</b> button is on every screen &rarr; Emergency screen &rarr; "Show to staff" full-screen mode. Bottom tabs: Home · Map · Phrases · AI · SOS.</p>
+</section>
+
+<section>
+  <h2>1. Screens</h2>
+  <div class="grid">
+
+  <!-- 1 language -->
+  <div class="screen"><p class="cap">1 · Language select</p>
+  <div class="phone"><div class="bar"><span>9:41</span><span>●●●</span></div>
+    <div class="body">
+      <div class="ph" style="height:90px">LOGO / Torii illustration</div>
+      <div class="big" style="text-align:center">JAPAN TRAVEL</div>
+      <div class="small" style="text-align:center">Choose your language · भाषा छान्नुहोस् · ことば</div>
+      <div class="btn">English</div>
+      <div class="btn">नेपाली (Nepali)</div>
+      <div class="btn">日本語 (Japanese)</div>
+      <div class="btn">にほんご（ひらがなだけ）</div>
+      <div style="flex:1"></div>
+      <div class="btn pri">Start ▶</div>
+      <div class="small" style="text-align:center">Can be changed later from the top-right 🌐</div>
+    </div>
+  </div><div class="note">4 languages: EN / NP / JP / simple hiragana-only JP (for children &amp; beginners). Saved in localStorage.</div></div>
+
+  <!-- 2 home -->
+  <div class="screen"><p class="cap">2 · Home</p>
+  <div class="phone"><div class="bar"><span>9:41</span><span>●●●</span></div>
+    <div class="hd"><span>JAPAN TRAVEL</span><span class="sp"></span><span>🌐 EN</span></div>
+    <div class="body">
+      <div class="row"><div class="box" style="flex:2">📍 Tokyo, Shinjuku<div class="small">Current location (GPS)</div></div><div class="btn sos">🆘 SOS</div></div>
+      <div class="dash" style="display:flex;gap:8px;align-items:center"><div class="ph" style="width:44px;height:44px;border-radius:50%">AI</div><div>Konnichiwa! Where do you want to go today? <span class="demo">DEMO AI</span></div></div>
+      <div class="row"><div class="box">🗺️<br><b>Map</b><div class="small">Police · Trash · Shops</div></div><div class="box">💬<br><b>Phrases</b><div class="small">Say it in Japanese</div></div></div>
+      <div class="row"><div class="box">📷<br><b>Menu photo</b><div class="small">Translate</div></div><div class="box">⏱️<br><b>Wait times</b><div class="small">Airport · Sights</div></div></div>
+      <div class="row"><div class="box">🧭<br><b>Trip plan</b><div class="small">Auto itinerary</div></div><div class="box">🚃<br><b>Fare est.</b><div class="small">Train · Taxi</div></div></div>
+      <div class="fill small"><b>Most used phrases</b><br>・Where is the toilet? &nbsp;・Please help me &nbsp;・How much?</div>
+    </div>
+    <div class="tabs"><div class="on"><b>⌂</b>Home</div><div><b>🗺</b>Map</div><div><b>💬</b>Phrases</div><div><b>🤖</b>AI</div><div><b>🆘</b>SOS</div></div>
+  </div><div class="note">Hub for the 4 features in the deck (AI guide / menu / wait time / fare &amp; plan) + SOS always visible.</div></div>
+
+  <!-- 3 map -->
+  <div class="screen"><p class="cap">3 · Map (Google Maps API)</p>
+  <div class="phone"><div class="bar"><span>9:41</span><span>●●●</span></div>
+    <div class="hd">🔍 Search place… <span class="sp"></span>🌐</div>
+    <div class="body" style="padding:0">
+      <div class="ph" style="position:absolute;inset:0;border-radius:0;border:0">GOOGLE MAP</div>
+      <div style="position:absolute;top:6px;left:8px;right:8px;z-index:2">
+        <span class="chip on">🚓 Police</span><span class="chip">🏥 Hospital</span><span class="chip">🗑️ Trash</span><span class="chip">🏪 Shops</span><span class="chip">🚻 Toilet</span><span class="chip">🏧 ATM</span>
+      </div>
+      <span class="pin" style="top:170px;left:90px">🚓</span><span class="pin" style="top:230px;left:180px">🗑️</span><span class="pin" style="top:140px;left:200px">🏪</span><span class="pin" style="top:200px;left:140px">🔵</span>
+      <div class="sheet">
+        <div class="grab"></div>
+        <b>Nearest police station</b>
+        <div class="box row"><div style="flex:3"><b>Shinjuku Koban</b><div class="small">230 m · 3 min walk · Open 24h</div></div><div class="btn">Go ▶</div></div>
+        <div class="row"><div class="btn">📞 Call 110</div><div class="btn">🗣 Say phrase</div></div>
+        <div class="small">Powered by Places Nearby Search + Directions</div>
+      </div>
+    </div>
+  </div><div class="note">Filter chips call Places Nearby (type=police / hospital / convenience_store …). Trash bins: Google has no layer → own small dataset (JSON/GeoJSON pins) for demo.</div></div>
+
+  <!-- 4 phrases -->
+  <div class="screen"><p class="cap">4 · Phrase book</p>
+  <div class="phone"><div class="bar"><span>9:41</span><span>●●●</span></div>
+    <div class="hd">💬 Phrases <span class="sp"></span>🔍</div>
+    <div class="body">
+      <div><span class="chip on">Most used</span><span class="chip">Emergency</span><span class="chip">Food</span><span class="chip">Train</span><span class="chip">Shop</span><span class="chip">Hotel</span></div>
+      <div class="box">
+        <div class="small">You see (<span data-show="lbl">English</span>)</div>
+        <b data-show="src">Where is the toilet?</b>
+        <hr style="border:0;border-top:1px dashed var(--line)">
+        <div class="big" lang="ja">トイレはどこですか？</div>
+        <div class="small">toire wa doko desu ka?</div>
+        <div class="small" lang="ja">といれは どこですか？</div>
+        <div class="row" style="margin-top:6px"><div class="btn">🔊 Play</div><div class="btn pri">📱 Show to staff</div></div>
+      </div>
+      <div class="box">Please help me <div class="small">たすけてください</div></div>
+      <div class="box">How much is it? <div class="small">いくらですか？</div></div>
+      <div class="box">I'm lost <div class="small">まいごです / みちにまよいました</div></div>
+      <div class="box">I have an allergy <div class="small">アレルギーが あります</div></div>
+    </div>
+    <div class="tabs"><div><b>⌂</b>Home</div><div><b>🗺</b>Map</div><div class="on"><b>💬</b>Phrases</div><div><b>🤖</b>AI</div><div><b>🆘</b>SOS</div></div>
+  </div><div class="note">Static JSON, sorted by "usage count" (local counter → algorithm). 🔊 uses browser Web Speech API (ja-JP) — free.</div></div>
+
+  <!-- 5 SOS -->
+  <div class="screen"><p class="cap">5 · Emergency / SOS</p>
+  <div class="phone"><div class="bar"><span>9:41</span><span>●●●</span></div>
+    <div class="hd" style="background:var(--hot);color:#fff">🆘 Emergency <span class="sp"></span>✕</div>
+    <div class="body">
+      <div class="row"><div class="btn sos">🚓 Police<br><span class="big">110</span></div><div class="btn sos">🚑 Ambulance / Fire<br><span class="big">119</span></div></div>
+      <div class="box">🌊 Coast Guard <b>118</b></div>
+      <div class="box">📞 Japan Visitor Hotline (24h, multilingual)<br><b>050-3816-2787</b><div class="small">JNTO · verify numbers before release</div></div>
+      <div class="box">🌐 Japan Helpline (24h, English) <b>0570-064-211</b></div>
+      <div class="fill">📍 <b>Nearest police station</b><br>Shinjuku Koban · 230 m <span class="small">→ opens Map</span></div>
+      <div class="row"><div class="btn pri">📱 Tell them my location</div><div class="btn">🗣 Phrases</div></div>
+      <div class="small">Tap number = <code>tel:</code> link (calls on mobile). Works offline (static data).</div>
+    </div>
+  </div><div class="note">Mobile "tel:110" links. Location text auto-built ("I am near Shinjuku St. East exit") to read aloud / show.</div></div>
+
+  <!-- 6 show to staff -->
+  <div class="screen"><p class="cap">6 · "Show to staff" mode</p>
+  <div class="phone"><div class="bar"><span>9:41</span><span>●●●</span></div>
+    <div class="body full" style="padding:16px">
+      <div class="small" style="color:#aaa">Please read this / よんでください</div>
+      <div style="font-size:30px;font-weight:700;line-height:1.3" lang="ja">たすけてください。<br>けいさつを<br>よんでください。</div>
+      <div style="color:#aaa">Please help me. Call the police.</div>
+      <div style="display:flex;gap:8px;margin-top:20px;width:100%"><div class="btn" style="color:#222">🔊 Read aloud</div><div class="btn" style="color:#222">◀ Back</div></div>
+    </div>
+  </div><div class="note">Full-screen, huge text, max brightness style. Hiragana by default so anyone can read it. Used for police, hospital, shops.</div></div>
+
+  <!-- 7 menu -->
+  <div class="screen"><p class="cap">7 · Menu photo translate</p>
+  <div class="phone"><div class="bar"><span>9:41</span><span>●●●</span></div>
+    <div class="hd">📷 Menu <span class="demo">DEMO</span><span class="sp"></span>🌐</div>
+    <div class="body">
+      <div class="ph" style="height:150px">Camera / uploaded menu photo</div>
+      <div class="row"><div class="btn">📸 Take photo</div><div class="btn">🖼 Gallery</div></div>
+      <div class="small"><b>Result</b> &nbsp;<span class="chip on">All</span><span class="chip">Veg</span><span class="chip">Halal</span><span class="chip">No pork</span></div>
+      <div class="box">ラーメン · <b>Ramen</b> ¥900<div class="small">⚠ wheat, egg, pork</div></div>
+      <div class="box">天ぷら · <b>Tempura</b> ¥1,200<div class="small">⚠ shrimp, wheat</div></div>
+      <div class="box">🔊 "これをください" <span class="small">(I'll have this)</span></div>
+    </div>
+  </div><div class="note">Demo: preset sample menus + keyword dictionary (ramen, udon, tempura…) with allergen tags. Real version = OCR + translation API.</div></div>
+
+  <!-- 8 wait times -->
+  <div class="screen"><p class="cap">8 · Wait times</p>
+  <div class="phone"><div class="bar"><span>9:41</span><span>●●●</span></div>
+    <div class="hd">⏱️ Wait times <span class="demo">SIMULATED</span></div>
+    <div class="body">
+      <div><span class="chip on">Airports</span><span class="chip">Sights</span><span class="chip">Stations</span></div>
+      <div class="box"><b>Kansai Airport · Immigration</b><div class="bar2"><i style="width:70%"></i></div><div class="small">~ 45 min · Busy</div></div>
+      <div class="box"><b>Narita T1 · Immigration</b><div class="bar2"><i style="width:35%"></i></div><div class="small">~ 20 min · Normal</div></div>
+      <div class="box"><b>Fushimi Inari</b><div class="bar2"><i style="width:85%"></i></div><div class="small">Very crowded now</div></div>
+      <div class="fill"><b>Best time to visit</b>
+        <div style="display:flex;gap:2px;align-items:flex-end;height:50px;margin-top:4px">
+          <i style="flex:1;background:var(--ink);height:30%"></i><i style="flex:1;background:var(--ink);height:45%"></i><i style="flex:1;background:var(--ink);height:80%"></i><i style="flex:1;background:var(--ink);height:100%"></i><i style="flex:1;background:var(--ink);height:70%"></i><i style="flex:1;background:var(--ink);height:40%"></i>
+        </div><div class="small">8 10 12 14 16 18 → go before 10:00</div></div>
+    </div>
+  </div><div class="note">Algorithm: weekday × hour × holiday multiplier table + small random noise. Marked "simulated".</div></div>
+
+  <!-- 9 AI guide -->
+  <div class="screen"><p class="cap">9 · AI Guide (dummy AI)</p>
+  <div class="phone"><div class="bar"><span>9:41</span><span>●●●</span></div>
+    <div class="hd">🤖 AI Guide <span class="demo">NOT REAL AI</span><span class="sp"></span>🌐</div>
+    <div class="body">
+      <div class="row" style="flex:0"><div class="ph" style="width:46px;height:46px;border-radius:50%;flex:none">Avatar</div><div class="small">Ask in any of the 4 languages</div></div>
+      <div class="bubble">Hello! Ask me about shrines, food, trains or help.</div>
+      <div class="bubble me">Tell me about Senso-ji</div>
+      <div class="bubble">Senso-ji (浅草寺) is Tokyo's oldest temple, founded 645. Best before 9:00. <span class="small">[Learn more ▸ Map]</span></div>
+      <div class="bubble me">Where is police?</div>
+      <div class="bubble">Nearest: Asakusa Koban (200 m). <span class="small">[Open map] [Emergency]</span></div>
+      <div style="flex:1"></div>
+      <div><span class="chip">🍜 Food?</span><span class="chip">🚃 Train?</span><span class="chip">⛩ History</span></div>
+      <div class="row"><div class="box" style="flex:4">Type a message…</div><div class="btn">🎤</div></div>
+    </div>
+  </div><div class="note">Keyword/intent matching → answer from local JSON (spots, FAQ). Falls back to "Sorry, I don't know" + quick-reply chips. Voice input via Web Speech API.</div></div>
+
+  <!-- 10 trip plan -->
+  <div class="screen"><p class="cap">10 · Trip planner</p>
+  <div class="phone"><div class="bar"><span>9:41</span><span>●●●</span></div>
+    <div class="hd">🧭 Trip plan <span class="demo">RULE-BASED</span></div>
+    <div class="body">
+      <div class="box"><b>City</b> Tokyo ▾ &nbsp; <b>Days</b> 2 ▾ &nbsp; <b>Budget</b> ¥¥ ▾</div>
+      <div class="small">Interests</div>
+      <div><span class="chip on">⛩ Temples</span><span class="chip on">🍜 Food</span><span class="chip">🎮 Anime</span><span class="chip">🌸 Nature</span><span class="chip">🛍 Shopping</span></div>
+      <div class="btn pri">Create plan ▶</div>
+      <div class="fill"><b>Day 1</b><br>09:00 Senso-ji · <span class="small">free</span><br>11:30 Lunch: Ramen street<br>14:00 Meiji Shrine<br><span class="small">🚃 Fare est. ¥480 · 35 min</span></div>
+      <div class="fill"><b>Day 2</b><br>09:00 Tsukiji market<br>13:00 Ueno park …</div>
+      <div class="row"><div class="btn">🗺 Show on map</div><div class="btn">💾 Save</div></div>
+    </div>
+  </div><div class="note">Spots tagged by interest → score + distance sort (nearest-neighbour) → fill time slots. Fare = distance × rate table.</div></div>
+
+  </div>
+</section>
+
+<section>
+  <h2>2. Tech &amp; "AI" approach (hackathon)</h2>
+  <div class="cards">
+    <div class="box"><b>Real APIs</b><br>Google Maps JavaScript API · Places API (Nearby Search) · Directions · Geolocation. Key restricted by HTTP referrer.<br>Browser Web Speech API for 🔊 / 🎤 (free).</div>
+    <div class="box"><b>Dummy AI (algorithms)</b><br>• Chat: keyword + intent scoring over local JSON<br>• Plan: tag match + nearest-neighbour route<br>• Wait: time-table × holiday multiplier<br>• Menu: sample images + dictionary<br>• Phrases: sorted by local usage count</div>
+    <div class="box"><b>Static data (JSON)</b><br><code>phrases.json</code> (EN/NP/JP/hiragana/romaji) · <code>spots.json</code> · <code>emergency.json</code> · <code>trash.json</code> · <code>menu_dict.json</code> · <code>ui_strings.json</code> (i18n)</div>
+    <div class="box"><b>Stack suggestion</b><br>Plain HTML + CSS + vanilla JS (or React + Vite) · PWA (offline phrases &amp; SOS) · deploy on Cloudflare Pages / GitHub Pages — no backend needed.</div>
+    <div class="box"><b>Honesty labels</b><br>Small badge on AI / Menu / Wait / Plan: <span class="demo">DEMO – NOT REAL AI</span>. Footer: "Prototype for hackathon, data are sample."</div>
+    <div class="box"><b>Deck → feature map</b><br>AI guide → screen 9 · Menu translate → 7 · Wait check → 8 · Fare &amp; plan → 10 · Trash problem → Map "🗑 Trash" filter · Language wall → Phrases + Show-to-staff.</div>
+  </div>
+</section>
+
+<footer>Wireframe v1 — low fidelity; layout only. Emergency numbers should be re-verified against official sources before any public release.</footer>
+
+<script>
+const T={
+ en:{lbl:"English",src:"Where is the toilet?"},
+ np:{lbl:"नेपाली",src:"शौचालय कहाँ छ?"},
+ jp:{lbl:"日本語",src:"トイレはどこですか？"},
+ hi:{lbl:"ひらがな",src:"といれは どこですか？"}
+};
+document.querySelectorAll('nav.langs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav.langs button').forEach(x=>x.classList.toggle('on',x===b));
+  const t=T[b.dataset.l];
+  document.querySelectorAll('[data-show]').forEach(e=>e.textContent=t[e.dataset.show]);
+});
+</script>
+</body>
+</html>
