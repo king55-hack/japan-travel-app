@@ -85,7 +85,7 @@ const go = v => { location.hash = '#/' + v; };
 function render() {
   const v = view();
   document.documentElement.lang = st.lang === 'np' ? 'ne' : st.lang === 'en' ? 'en' : 'ja';
-  const heads = { home: '', map: 'map', phrases: 'phrases', chat: 'ai', sos: 'emergency', menu: 'menu', wait: 'wait', plan: 'plan', fare: 'fare', help: 'help_btn', nearby: 'near_you', listen: 'listen', tips: 'tips', profile: 'profile', credits: 'credits', settings: 'settings' };
+  const heads = { home: '', map: 'map', phrases: 'phrases', chat: 'ai', sos: 'emergency', menu: 'menu', wait: 'wait', plan: 'plan', fare: 'fare', help: 'help_btn', nearby: 'near_you', listen: 'listen', tips: 'tips', profile: 'profile', credits: 'credits', settings: 'settings', book: 'book', spot: 'sights_pop' };
   let html = '';
   if (v !== 'lang') {
     html += `<header class="top">
@@ -135,9 +135,9 @@ const VIEWS = {
   home() {
     const tile = (href, ic, label) => `<a class="tile" href="${href}"><span class="ic">${ic}</span><b>${label}</b></a>`;
     const section = (title, tiles, more) => (tiles.length ? `<h3>${title}${more || ''}</h3><div class="tiles">${tiles.join('')}</div>` : '');
-    const around = ['police', 'hospital', 'toilet', 'shop', 'trash', 'charge', 'rental', 'locker'];
+    const around = ['police', 'hospital', 'station', 'hotel', 'toilet', 'shop', 'trash', 'charge', 'rental', 'locker'];
     const talk = [on('phrases') && tile('#/phrases', '💬', tr('phrases')), on('listen') && tile('#/listen', '🎧', tr('listen')), on('menu') && tile('#/menu', '📷', tr('menu')), on('profile') && tile('#/profile', '🥜', tr('profile'))].filter(Boolean);
-    const planT = [on('plan') && tile('#/plan', '🧭', tr('plan')), on('fare') && tile('#/fare', '🚃', tr('fare')), on('wait') && tile('#/wait', '⏱️', tr('wait')), on('tips') && tile('#/tips', '💡', tr('tips'))].filter(Boolean);
+    const planT = [on('plan') && tile('#/plan', '🧭', tr('plan')), on('fare') && tile('#/fare', '🚃', tr('fare')), on('wait') && tile('#/wait', '⏱️', tr('wait')), on('tips') && tile('#/tips', '💡', tr('tips')), on('book') && tile('#/book', '📅', tr('book'))].filter(Boolean);
     const top = topPhrases(3);
     return `<div class="gsearch"><input class="search" data-c="gsearch" autocomplete="off" placeholder="🔍 ${tr('search_all')}"><div id="gres" class="gres"></div></div>
       <a class="helpbig" href="#/help"><span class="hb">🆘</span><div><b>${tr('help_btn')}</b><small>${tr('help_sub')}</small></div></a>
@@ -147,7 +147,7 @@ const VIEWS = {
       ${section(tr('sec_talk'), talk)}
       ${section(tr('sec_plan'), planT)}
       ${on('photos') ? `<h3>${tr('sights_pop')}</h3>
-      <div class="hscroll">${SPOTS.filter(s => s.pop >= 4).slice(0, 8).map(s => `<div class="scard" data-a="askspot" data-v="${s.id}">${phSlot(s.id, 'card')}<b>${esc(nm(s))}</b><small>${esc(nm(CITIES.find(c => c.id === s.city)))}</small></div>`).join('')}</div>` : ''}
+      <div class="hscroll">${SPOTS.filter(s => s.pop >= 4).slice(0, 8).map(s => `<div class="scard" data-a="opensp" data-v="${s.id}">${phSlot(s.id, 'card')}<b>${esc(nm(s))}</b><small>${esc(nm(CITIES.find(c => c.id === s.city)))}</small></div>`).join('')}</div>` : ''}
       ${on('chat') ? `<div class="hello" data-a="nav" data-v="chat"><div class="avatar">🗾</div><div><b>${tr('greet_home')}</b><div class="badge">${tr('demo_ai')}</div></div></div>` : ''}
       ${on('phrases') ? `<h3>${tr('most_used')} <a href="#/phrases" class="more">${tr('see_all')} ›</a></h3>${top.map(phraseCard).join('')}` : ''}
       <p class="muted small center">${tr('prototype')} · <a href="#/credits"><u>${tr('credits')}</u></a> · <a href="#/settings"><u>⚙ ${tr('settings')}</u></a></p>`;
@@ -285,7 +285,7 @@ async function fetchNear(type) {
       const cfg = PLACE_TYPES[type], fields = ['displayName', 'location', 'formattedAddress'];
       const { places } = cfg.text
         ? await Place.searchByText({ textQuery: cfg.text, fields, locationBias: { center: st.pos, radius: 3000 }, maxResultCount: 12 })
-        : await Place.searchNearby({ fields, locationRestriction: { center: st.pos, radius: 2000 }, includedPrimaryTypes: [cfg.type], maxResultCount: 12 });
+        : await Place.searchNearby({ fields, locationRestriction: { center: st.pos, radius: 2000 }, includedPrimaryTypes: cfg.types || [cfg.type], maxResultCount: 12 });
       list = (places || []).map(p => ({ name: p.displayName, sub: p.formattedAddress, lat: p.location.lat(), lng: p.location.lng() }));
     }
   } catch (err) { console.warn('Nearby search failed, using sample data:', err.message || err); }
@@ -385,7 +385,7 @@ async function googleAddress() {
   const r0 = jj.results[0], postal = (r0.address_components.find(c => c.types.includes('postal_code')) || {}).long_name || '';
   const ja = r0.formatted_address.replace(/^日本、\s*/, '').replace(/〒\d{3}-\d{4}\s*/, '');
   const en = (await get('en')).results[0];
-  return { ja, en: en ? en.formatted_address : '', postal: postal.replace(/^〒/, '') };
+  return { ja, en: en ? en.formatted_address : '', rj: en ? en.formatted_address.replace(/,?\s*Japan$/, '') : '', postal: postal.replace(/^〒/, '') };
 }
 async function addressInfo() {
   const key = `${st.pos.lat.toFixed(4)},${st.pos.lng.toFixed(4)}`;
@@ -397,7 +397,7 @@ async function addressInfo() {
       const ja = await osmAddress('ja');
       await new Promise(r => setTimeout(r, 1100));   // Nominatim allows 1 request per second
       const en = await osmAddress('en');
-      return { ja: joinAddr(ja, true), en: joinAddr(en, false) + (ja.postcode ? ' ' + ja.postcode : ''), postal: ja.postcode || en.postcode || '' };
+      return { ja: joinAddr(ja, true), en: joinAddr(en, false) + (ja.postcode ? ' ' + ja.postcode : ''), rj: joinRomaji(ja, en), postal: ja.postcode || en.postcode || '' };
     } catch (err) { console.warn('Address lookup failed:', err.message || err); addrCache.delete(key); return null; }
   })();
   addrCache.set(key, p);
@@ -416,7 +416,8 @@ async function fillMyAddr() {
   if (!i || (!i.ja && !i.postal)) { h.innerHTML = `<b>📍 ${tr('my_addr')}</b><small class="muted">${tr('addr_fail')}</small>`; return; }
   h.innerHTML = `<b>📍 ${tr('my_addr')}</b>${st.pos.real ? '' : `<small class="muted">(${tr('sample_loc')})</small>`}
     ${i.postal ? `<div class="postal"><small>${tr('postal')}</small> <b>〒${esc(i.postal)}</b></div>` : ''}
-    <div class="addr-ja" lang="ja">${esc(i.ja)}</div>${i.en ? `<div class="small muted">${esc(i.en)}</div>` : ''}
+    <div class="addr-ja" lang="ja">${esc(i.ja)}</div>
+    ${i.rj ? `<div class="romaji"><small>${tr('say_romaji')}</small><div class="ro-line">${esc(i.rj)}${i.postal ? ', ' + esc(i.postal) : ''}</div><div class="small">${esc(romajiSay(i))}</div></div>` : (i.en ? `<div class="small muted">${esc(i.en)}</div>` : '')}
     <div class="two"><button class="btn pri" data-a="readaddr">🔊 ${tr('read_police')}</button><button class="btn" data-a="myloc">📱 ${tr('show_big')}</button></div>
     <small class="muted">${tr('addr_note')}</small>`;
 }
@@ -425,7 +426,7 @@ function locOverlay() {
   const spoken = i && i.ja ? sayAddress(i) : '助けてください。今ここにいます。';
   return {
     isLoc: true, hi: 'たすけて ください。いま ここに います。', ja: '助けてください。今ここにいます。', src: tr('loc_text'), speak: spoken,
-    extra: `<div class="ov-addr">${i && i.postal ? `<div class="ov-postal">〒${esc(i.postal)}</div>` : ''}${i && i.ja ? `<div class="ov-aja" lang="ja">${esc(i.ja)}</div>` : `<small>${tr('addr_wait')}</small>`}${i && i.en ? `<small>${esc(i.en)}</small>` : ''}</div>
+    extra: `<div class="ov-addr">${i && i.postal ? `<div class="ov-postal">〒${esc(i.postal)}</div>` : ''}${i && i.ja ? `<div class="ov-aja" lang="ja">${esc(i.ja)}</div>` : `<small>${tr('addr_wait')}</small>`}${i && i.rj ? `<div class="ov-ro">${esc(i.rj)}${i.postal ? ', ' + esc(i.postal) : ''}</div>` : (i && i.en ? `<small>${esc(i.en)}</small>` : '')}</div>
       <div class="ov-loc">📍 ${st.pos.lat.toFixed(5)}, ${st.pos.lng.toFixed(5)}${st.pos.real ? '' : ' (' + tr('sample_loc') + ')'}<br><a href="${url}" target="_blank" rel="noopener">${url}</a><br><button class="btn" data-a="copyloc">${tr('copy')}</button></div>`,
   };
 }
@@ -434,8 +435,8 @@ const locBanner = () => (st.pos.real
   : `<div class="notice"><small>${tr('using_sample')}</small><button class="btn" data-a="allowloc">${tr('allow_loc')}</button></div>`);
 
 // ---------- near-you strips ----------
-const NEAR_HOME = ['police', 'hospital', 'shop', 'toilet', 'trash'];
-const NEAR_ALL = ['police', 'hospital', 'pharmacy', 'shop', 'toilet', 'atm', 'trash', 'charge', 'rental', 'locker'];
+const NEAR_HOME = ['police', 'hospital', 'station', 'shop', 'toilet', 'trash'];
+const NEAR_ALL = ['police', 'hospital', 'station', 'hotel', 'pharmacy', 'shop', 'toilet', 'atm', 'trash', 'charge', 'rental', 'locker'];
 const nearStrip = () => `<div class="box near"><div class="row"><b>📍 ${tr('near_you')}</b><a class="more" href="#/nearby">${tr('see_all')} ›</a></div>${locBanner()}<div id="nearrows" class="nearrows"><small class="muted">${tr('loading')}</small></div></div>`;
 function nearRow(type, p, big) {
   return `<div class="nrow ${big ? 'box' : ''}"><div class="ninfo"><b>${PLACE_TYPES[type].icon} ${tr('c_' + type)}</b><div class="small nm2">${esc(pname(p, type))}</div><div class="small muted">${walkLabel(p.km)}</div></div>
@@ -452,7 +453,7 @@ async function fillNear(types, hostSel, big) {
 }
 function sightsNear() {
   const list = SPOTS.map(s => ({ ...s, km: hav(st.pos, s) })).sort((a, b) => a.km - b.km).slice(0, 4);
-  return list.map(s => `<div class="box row sightrow">${phSlot(s.id, 'thumb')}<div class="grow"><b>${esc(nm(s))}</b><div class="small muted">${fmtDist(s.km)}</div></div><a class="btn go" target="_blank" rel="noopener" href="${dirUrl(s, 'transit')}">${ICON.go}${tr('go')}</a></div>`).join('');
+  return list.map(s => `<div class="box row sightrow" data-a="opensp" data-v="${s.id}">${phSlot(s.id, 'thumb')}<div class="grow"><b>${esc(nm(s))}</b><div class="small muted">${fmtDist(s.km)}</div></div><a class="btn go" target="_blank" rel="noopener" href="${dirUrl(s, 'transit')}">${ICON.go}${tr('go')}</a></div>`).join('');
 }
 
 // ---------- extra views ----------
@@ -615,7 +616,7 @@ function sendChat(text) {
 }
 
 // ---------- trust labels: what is real, what is an estimate, what is demo ----------
-const TRUST_ICON = { real: '●', est: '≈', demo: '🧪', ai: '🤖', ocr: '👁', map: '🗺', voice: '🎤' };
+const TRUST_ICON = { book: '📅', real: '●', est: '≈', demo: '🧪', ai: '🤖', ocr: '👁', map: '🗺', voice: '🎤' };
 const trust = (...ks) => `<div class="trusts">${ks.map(k => `<span class="trust t-${k}">${TRUST_ICON[k]} ${tr('tb_' + k)}</span>`).join('')}</div>`;
 const noteConfirm = () => `<p class="muted small note">⚠ ${tr('note_confirm')}</p>`;
 
@@ -1032,7 +1033,7 @@ Object.assign(S, {
   clear_note: ['Removes allergies, pins, history and settings from this device.', 'यो उपकरणबाट एलर्जी, पिन, इतिहास र सेटिङ हटाउँछ।', 'この端末のアレルギー・ピン・履歴・設定を消します。', 'この たんまつの あれるぎー・ぴん・りれき・せっていを けします。'],
   cleared: ['Deleted', 'मेटियो', '削除しました', 'さくじょ しました'],
 });
-const TOGGLES = [['near', 'near_you', '📍'], ['weather', 'weather', '🌤️'], ['photos', 'sights_pop', '🏯'], ['map', 'map', '🗺️'], ['phrases', 'phrases', '💬'], ['listen', 'listen', '🎧'], ['menu', 'menu', '📷'], ['profile', 'profile', '🥜'], ['plan', 'plan', '🧭'], ['fare', 'fare', '🚃'], ['wait', 'wait', '⏱️'], ['tips', 'tips', '💡'], ['chat', 'ai', '🤖']];
+const TOGGLES = [['near', 'near_you', '📍'], ['weather', 'weather', '🌤️'], ['photos', 'sights_pop', '🏯'], ['map', 'map', '🗺️'], ['phrases', 'phrases', '💬'], ['listen', 'listen', '🎧'], ['menu', 'menu', '📷'], ['profile', 'profile', '🥜'], ['plan', 'plan', '🧭'], ['fare', 'fare', '🚃'], ['wait', 'wait', '⏱️'], ['tips', 'tips', '💡'], ['book', 'book', '📅'], ['chat', 'ai', '🤖']];
 const PRESETS = { min: TOGGLES.map(t => t[0]).filter(id => !['map', 'phrases'].includes(id)), food: ['near', 'weather', 'photos', 'listen', 'plan', 'fare', 'wait', 'tips', 'chat'], all: [] };
 const ZOOMS = [['s', 0.92], ['m', 1], ['l', 1.18]];
 function applyZoom() { document.documentElement.style.setProperty('--zoom', st.prefs.zoom || 1); }
@@ -1046,6 +1047,103 @@ VIEWS.settings = () => `<h3>${tr('presets')}</h3>
   <div class="chips">${['auto', 'light', 'dark'].map(k => `<button class="chip ${st.theme === k ? 'on' : ''}" data-a="settheme" data-v="${k}">${tr('th_' + k)}</button>`).join('')}</div>
   <h3>${tr('credits')}</h3><a class="btn" href="#/credits">📷 ${tr('credits')}</a>
   <button class="btn del big" data-a="cleardata">🗑 ${tr('clear_data')}</button><p class="muted small">${tr('clear_note')}</p>`;
+
+// ---------- romaji address (so it can be read out over the phone) ----------
+function joinRomaji(ja, en) {
+  const iso = (ja['ISO3166-2-lvl4'] || '').match(/^JP-(\d\d)$/);
+  const out = [];
+  const add = x => { if (x && !out.some(y => y.toLowerCase().includes(x.toLowerCase()))) out.push(x); };
+  add(iso ? PREF_EN[+iso[1] - 1] : '');
+  ['city', 'town', 'village', 'city_district', 'administrative', 'suburb', 'neighbourhood', 'quarter'].forEach(f => {
+    const j = ja[f]; let x = en[f];
+    if (!x) return;
+    if (j && /区$/.test(j) && !/-ku$/i.test(x)) x = x.replace(/\s*(ward|city)$/i, '') + '-ku';
+    else if (j && /市$/.test(j) && !/-shi$/i.test(x)) x = x.replace(/\s*city$/i, '') + '-shi';
+    else if (j && /丁目$/.test(j)) x = x.replace(/\s(\d+)$/, ' $1-chome');
+    add(x);
+  });
+  if (en.house_number) add(en.house_number);
+  return out.join(', ');
+}
+const roPostal = z => z.split(/[^0-9]+/).filter(Boolean).map(g => g.split('').map(d => RO_NUM[+d]).join('-')).join(' no ');
+const romajiSay = i => (i.rj ? `Tasukete kudasai. Ima, ${i.rj} ni imasu.${i.postal ? ` Yuubin bangou wa ${roPostal(i.postal)} desu.` : ''}` : '');
+const ALLERGEN_RO = { egg: 'tamago', milk: 'gyuunyuu', wheat: 'komugi', buckwheat: 'soba', peanut: 'piinattsu', shrimp: 'ebi', crab: 'kani', fish: 'sakana', soy: 'daizu', sesame: 'goma', pork: 'butaniku', beef: 'gyuuniku', chicken: 'toriniku', alcohol: 'osake' };
+
+// ---------- reservations: plan, phone script, calendar, show-to-staff (does not book for you) ----------
+const bookDefaults = () => ({ place: '', spotId: '', date: '', time: '18:00', people: 2, name: '', note: '' });
+st.bf = bookDefaults();
+const bookings = () => store.get('bookings', []);
+function bookScript(b) {
+  const [, m, d] = b.date.split('-').map(Number), [hh, mm] = (b.time || '18:00').split(':').map(Number);
+  const al = st.prefs.allergens || [];
+  const jaAl = al.length ? `${al.map(k => ALLERGEN_JA[k][0]).join('、')}のアレルギーがあります。` : '';
+  const roAl = al.length ? ` ${al.map(k => ALLERGEN_RO[k]).join(', ')} no arerugii ga arimasu.` : '';
+  const when = `${m}月${d}日、${hh}時${mm === 30 ? '半' : mm ? mm + '分' : ''}`;
+  const ja = `もしもし。予約をお願いします。${when}、${b.people}名です。お名前は${b.name || '〇〇'}です。${jaAl}空いていますか？`;
+  const ro = `Moshi moshi. Yoyaku o onegai shimasu. ${RO_MONTH[m]}-gatsu ${roDay(d)}, ${roHour(hh)}${mm === 30 ? ' han' : mm ? ' ' + mm + '-pun' : ''}, ${RO_PEOPLE[b.people] || b.people + '-nin'} desu. Onamae wa ${b.name || '(your name)'} desu.${roAl} Aite imasu ka?`;
+  return { ja, ro, when };
+}
+function icsFor(b) {
+  const p = n => String(n).padStart(2, '0');
+  const [y, m, d] = b.date.split('-').map(Number), [hh, mm] = (b.time || '18:00').split(':').map(Number);
+  const start = `${y}${p(m)}${p(d)}T${p(hh)}${p(mm)}00`, end = `${y}${p(m)}${p(d)}T${p(Math.min(hh + 1, 23))}${p(hh >= 23 ? 59 : mm)}00`;
+  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Japan Travel//EN', 'BEGIN:VEVENT', `UID:${b.id}@japan-travel`, `DTSTAMP:${new Date().toISOString().replace(/[-:]|\.\d+/g, '')}`,
+    `DTSTART;TZID=Asia/Tokyo:${start}`, `DTEND;TZID=Asia/Tokyo:${end}`, `SUMMARY:${b.place.replace(/[,;\n]/g, ' ')} (${b.people})`,
+    `DESCRIPTION:${(b.conf ? 'Confirmation ' + b.conf + '. ' : '') + (b.note || '').replace(/[,;\n]/g, ' ')}`, 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+}
+function bookingCard(b) {
+  const sp = b.spotId && SPOTS.find(s => s.id === b.spotId), site = sp && DETAILS[sp.id] && DETAILS[sp.id].site;
+  const sc = bookScript(b), open = st.bkOpen === b.id;
+  return `<div class="box booking"><div class="row"><b>${esc(b.place)}</b><span class="stat s-${b.status}">${tr('st_' + b.status)}</span></div>
+    <div>📅 ${esc(b.date)} ${esc(b.time)} · ${b.people} ${tr('people')}${b.name ? ' · ' + esc(b.name) : ''}</div>
+    ${b.note ? `<small class="muted">${esc(b.note)}</small>` : ''}
+    <div class="two"><label class="mini">${tr('bk_status')}<select data-c="bstatus" data-id="${b.id}">${['planned', 'requested', 'confirmed'].map(s => `<option value="${s}" ${s === b.status ? 'selected' : ''}>${tr('st_' + s)}</option>`).join('')}</select></label>
+      <label class="mini">${tr('bk_conf')}<input class="num-in" type="text" data-c="bconf" data-id="${b.id}" value="${esc(b.conf || '')}"></label></div>
+    <div class="two">${site ? `<a class="btn go" target="_blank" rel="noopener" href="${site}">${ICON.go}${tr('bk_site')}</a>` : ''}
+      <a class="btn" target="_blank" rel="noopener" href="https://www.google.com/search?q=${encodeURIComponent(b.place + ' reservation')}">🔎 ${tr('bk_search')}</a>
+      <button class="btn" data-a="bics" data-v="${b.id}">📅 ${tr('bk_ics')}</button>
+      <button class="btn" data-a="bshow" data-v="${b.id}">📱 ${tr('bk_show')}</button>
+      <button class="btn" data-a="bphone" data-v="${b.id}">📞 ${tr('bk_phone')}</button>
+      <button class="btn del" data-a="bdel" data-v="${b.id}">${ICON.trash} ${tr('delete')}</button></div>
+    ${open ? `<div class="box fill"><div class="addr-ja" lang="ja">${esc(sc.ja)}</div><div class="ro-line">${esc(sc.ro)}</div><button class="btn pri" data-a="bspeak" data-v="${b.id}">🔊 ${tr('read_aloud')}</button></div>` : ''}</div>`;
+}
+VIEWS.book = () => {
+  const f = st.bf, today = new Date().toISOString().slice(0, 10), list = bookings().sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  return `${trust('book')}<p class="muted small">${tr('bk_note_real')}</p>
+    <div class="box form"><b>${tr('bk_new')}</b>
+      <label class="col">${tr('bk_place')}<input class="txt" data-c="bf" data-k="place" value="${esc(f.place)}"></label>
+      <div class="two"><label class="col">${tr('bk_date')}<input class="txt" type="date" min="${today}" data-c="bf" data-k="date" value="${esc(f.date)}"></label>
+      <label class="col">${tr('bk_time')}<input class="txt" type="time" data-c="bf" data-k="time" value="${esc(f.time)}"></label></div>
+      <div class="two"><label class="col">${tr('bk_people')}<select data-c="bf" data-k="people">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => `<option ${n === +f.people ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+      <label class="col">${tr('bk_name')}<input class="txt" data-c="bf" data-k="name" value="${esc(f.name)}"></label></div>
+      <label class="col">${tr('bk_note')}<input class="txt" data-c="bf" data-k="note" value="${esc(f.note)}"></label>
+      <button class="btn pri big" data-a="bsave">${tr('bk_save')}</button></div>
+    <h3>${tr('book')}</h3>${list.length ? list.map(bookingCard).join('') : `<p class="muted">${tr('bk_empty')}</p>`}${noteConfirm()}`;
+};
+
+// ---------- sight detail page ----------
+VIEWS.spot = () => {
+  const s = SPOTS.find(x => x.id === st.spotId) || SPOTS[0], d = DETAILS[s.id] || {};
+  const ac = d.ac ? d.ac[st.lang === 'ja' ? 1 : st.lang === 'hi' ? 2 : 0] : '', rsKey = { none: 'rs_none', rec: 'rs_rec', req: 'rs_req' }[d.rs || 'none'];
+  const km = hav(st.pos, s);
+  return `${phSlot(s.id, 'wide')}
+    <h2 class="sp-h">${esc(nm(s))}</h2><div class="muted">${esc(nm(CITIES.find(c => c.id === s.city)))} · ${fmtDist(km)}</div>
+    ${trust('est')}<p>${esc(s.d[L()])}</p>
+    <div class="box kvs">
+      ${d.h ? `<div class="kv"><b>🕒 ${tr('sp_hours')}</b><span>${esc(d.h)}</span></div>` : ''}
+      <div class="kv"><b>🎫 ${tr('sp_fee')}</b><span>${s.fee ? yen(s.fee) + approxMoney(s.fee) : tr('free_entry')}</span></div>
+      <div class="kv"><b>📅 ${tr('sp_reserve')}</b><span>${tr(rsKey)}</span></div>
+      ${ac ? `<div class="kv"><b>🚉 ${tr('sp_access')}</b><span>${esc(ac)}</span></div>` : ''}
+      ${d.t ? `<div class="kv"><b>💡 ${tr('sp_tip')}</b><span>${esc(d.t[L()])}</span></div>` : ''}
+    </div>
+    <div class="two"><a class="btn go" target="_blank" rel="noopener" href="${dirUrl(s, 'transit')}">${ICON.go}${tr('sp_dir')}</a>
+      ${d.site ? `<a class="btn" target="_blank" rel="noopener" href="${d.site}">${tr('bk_site')} ▸</a>` : ''}</div>
+    ${on('book') ? `<button class="btn pri big" data-a="bookspot" data-v="${s.id}">📅 ${tr('sp_book')}</button>` : ''}
+    <p class="muted small">${tr('sp_verify')}</p>${noteConfirm()}`;
+};
+document.addEventListener('input', e => {
+  if (e.target.dataset.c === 'bf') st.bf[e.target.dataset.k] = e.target.value;
+});
 
 // ---------- photos (Wikimedia Commons, free licences, cached on the device) ----------
 const photoCache = store.get('photos', {}), photoPending = {};
@@ -1084,6 +1182,7 @@ VIEWS.credits = () => `<p class="muted">${tr('photos_note')}</p>${SPOTS.filter(s
 // ---------- events ----------
 document.addEventListener('click', e => {
   if (e.target.closest('figcaption')) return;
+  const lk = e.target.closest('a[href]'); if (lk && !lk.dataset.a) return;
   const el = e.target.closest('[data-a]'); if (!el) return;
   const a = el.dataset.a, v = el.dataset.v;
   const A = {
@@ -1109,6 +1208,29 @@ document.addEventListener('click', e => {
       ['prefs', 'bins', 'usage', 'photos', 'rates', 'holidays', 'theme'].forEach(k => { try { localStorage.removeItem(k); } catch { /* blocked */ } });
       st.prefs = { allergens: [], diets: [], off: [] }; st.usage = {}; st.theme = 'auto'; applyTheme(); applyZoom();
       nearCache.clear(); el.textContent = '✓ ' + tr('cleared');
+    },
+    opensp() { st.spotId = v; go('spot'); },
+    bookspot() { const sp = SPOTS.find(x => x.id === v); st.bf = Object.assign(bookDefaults(), { place: sp.en, spotId: sp.id }); go('book'); },
+    bsave() {
+      const f = st.bf;
+      if (!f.place.trim() || !f.date) { el.textContent = tr('bk_need'); return; }
+      const al = (st.prefs.allergens || []).map(k => tr('a_' + k)).join(', ');
+      const list = bookings(); list.push({ id: Date.now(), place: f.place.trim(), spotId: f.spotId, date: f.date, time: f.time || '18:00', people: +f.people || 1, name: f.name.trim(), note: [f.note.trim(), al ? tr('my_allergies') + ': ' + al : ''].filter(Boolean).join(' · '), status: 'planned', conf: '' });
+      store.set('bookings', list); st.bf = bookDefaults(); render();
+    },
+    bdel() { store.set('bookings', bookings().filter(b => String(b.id) !== String(v))); render(); },
+    bphone() { st.bkOpen = String(st.bkOpen) === String(v) ? null : +v; render(); },
+    bspeak() { const b = bookings().find(x => String(x.id) === String(v)); if (b) speak(bookScript(b).ja); },
+    bics() {
+      const b = bookings().find(x => String(x.id) === String(v)); if (!b) return;
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([icsFor(b)], { type: 'text/calendar' })); a.download = 'reservation.ics'; document.body.appendChild(a); a.click(); a.remove();
+    },
+    bshow() {
+      const b = bookings().find(x => String(x.id) === String(v)); if (!b) return;
+      const [, m, d] = b.date.split('-').map(Number), t = b.time;
+      st.overlay = { hi: 'よやくを して います。', ja: `${m}月${d}日 ${t} ${b.people}名 ${b.name || ''}様で予約しています。`, src: b.place, speak: `${m}月${d}日 ${t} ${b.people}名で予約しています。`,
+        extra: b.conf ? `<div class="ov-addr"><div class="ov-postal">${esc(b.conf)}</div><small>${tr('bk_conf')}</small></div>` : '' };
+      renderOverlay();
     },
     readaddr() { if (st.addrInfo) speak(sayAddress(st.addrInfo)); },
     allowloc() { startLocation(); },
@@ -1170,6 +1292,9 @@ document.addEventListener('change', e => {
     ptotal() { st.plan.total = Math.max(0, +v || 0); render(); },
     pcurin() { st.plan.curIn = v; render(); },
     cur() { st.prefs.cur = v; store.set('prefs', st.prefs); render(); },
+    bf() { st.bf[e.target.dataset.k] = e.target.value; },
+    bstatus() { const l = bookings(); const b = l.find(x => String(x.id) === e.target.dataset.id); if (b) { b.status = v; store.set('bookings', l); render(); } },
+    bconf() { const l = bookings(); const b = l.find(x => String(x.id) === e.target.dataset.id); if (b) { b.conf = v; store.set('bookings', l); } },
     feat() { const id = e.target.dataset.id, i = st.prefs.off.indexOf(id); if (e.target.checked && i >= 0) st.prefs.off.splice(i, 1); if (!e.target.checked && i < 0) st.prefs.off.push(id); store.set('prefs', st.prefs); },
     ffrom() { st.fare.from = v; render(); },
     fto() { st.fare.to = v; render(); },
