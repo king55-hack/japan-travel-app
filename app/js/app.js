@@ -85,7 +85,7 @@ function render() {
   let html = '';
   if (v !== 'lang') {
     html += `<header class="top">
-      <a class="logo" href="#/home">⛩ ${tr('title')}</a>
+      <a class="logo" href="#/home"><img class="logoimg" src="logo.png" alt="" width="30" height="30"> ${tr('title')}</a>
       <select class="langsel" data-c="lang" aria-label="language">${LANGS.map(l => `<option value="${l.id}" ${l.id === st.lang ? 'selected' : ''}>${l.label}</option>`).join('')}</select>
       <button class="themebtn" data-a="theme" aria-label="${tr('theme')}" title="${tr('theme')}">${st.theme === 'dark' ? '🌙' : st.theme === 'light' ? '☀️' : '🌓'}</button>
       <a class="sosbtn" href="#/sos">🆘 ${tr('sos')}</a></header>`;
@@ -119,7 +119,7 @@ function renderOverlay() {
 const VIEWS = {
   lang() {
     return `<div class="langpage">
-      <div class="hero">⛩</div>
+      <img class="heroimg" src="logo.png" alt="Japan Travel logo" width="150" height="150">
       <h1>JAPAN TRAVEL</h1>
       <p class="tag">日本の旅行は、このひとつのアプリで<br><small>Nihon no ryokou wa kono hitotsu no apuri de</small></p>
       <p class="muted">Choose your language · भाषा छान्नुहोस् · ことば</p>

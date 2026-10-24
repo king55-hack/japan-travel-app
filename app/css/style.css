@@ -191,3 +191,4 @@ select{border:1.5px solid var(--line);border-radius:8px;padding:6px;font:inherit
 .sightrow{align-items:center;gap:10px}.grow{flex:1;min-width:0}
 .stop .grow{display:block}
 .nslot:empty{display:none}.nslot .nrow{border-top:1px solid var(--line)}
+.logo{display:flex;align-items:center;gap:8px}.logoimg{border-radius:50%;display:block}.heroimg{align-self:center;border-radius:50%;box-shadow:0 8px 24px #0003}
