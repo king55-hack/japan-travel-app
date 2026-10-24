@@ -199,8 +199,8 @@ const VIEWS = {
       const fl = m.filter;
       const mine = d => d.al.filter(a => st.prefs.allergens.includes(a));
       const ok = d => fl === 'all' || (fl === 'safe' && !mine(d).length) || (fl === 'veg' && !d.al.some(a => ['pork', 'beef', 'chicken', 'fish', 'shrimp'].includes(a))) ||
-        (fl === 'halal' && !d.al.some(a => a === 'pork' || a === 'alcohol')) || (fl === 'nopork' && !d.al.includes('pork'));
-      const fchips = st.prefs.allergens.length ? ['safe', 'all', 'veg', 'halal', 'nopork'] : ['all', 'veg', 'halal', 'nopork'];
+        (fl === 'halal' && !d.al.some(a => a === 'pork' || a === 'alcohol')) || (fl === 'hindu' && !d.al.includes('beef')) || (fl === 'nopork' && !d.al.includes('pork'));
+      const fchips = (st.prefs.allergens.length ? ['safe'] : []).concat(['all', 'veg', 'halal', 'hindu', 'nopork']);
       items = `<a class="chip" href="#/profile">🥜 ${tr('profile')}${st.prefs.allergens.length ? ' (' + st.prefs.allergens.length + ')' : ''}</a><div class="chips">${fchips.map(f => `<button class="chip ${f === fl ? 'on' : ''}" data-a="mfilter" data-v="${f}">${tr('f_' + f)}</button>`).join('')}</div>` +
         m.items.map(id => DISHES[id]).filter(ok).map((d, i) => {
           const id = m.items.find(k => DISHES[k] === d);
@@ -547,8 +547,9 @@ VIEWS.profile = () => {
     <button class="btn pri big" data-a="acard">🗣 ${tr('allergy_card')}</button>
     <a class="btn" href="#/menu">📷 ${tr('menu')}</a>
     <b>${tr('my_diet')}</b>
-    <div class="chips">${['veg', 'halal', 'gf'].map(d => `<button class="chip ${p.diets.includes(d) ? 'on' : ''}" data-a="ptoggle" data-k="diets" data-v="${d}">${PLACE_TYPES[d].icon} ${tr('c_' + d)}</button>`).join('')}</div>
+    <div class="chips">${DIETS.map(d => `<button class="chip ${p.diets.includes(d) ? 'on' : ''}" data-a="ptoggle" data-k="diets" data-v="${d}">${PLACE_TYPES[d].icon} ${tr('c_' + d)}</button>`).join('')}</div>
     ${p.diets.map(d => `<button class="btn" data-a="tomap" data-v="${d}">${PLACE_TYPES[d].icon} ${tr('c_' + d)} · ${tr('map')}</button>`).join('')}
+    ${p.diets.includes('hindu') ? `<p class="muted small">${tr('hindu_note')}</p>` : ''}
     <p class="muted small">${tr('diet_note')}</p><p class="muted small">${tr('saved_auto')}</p>`;
 };
 function allergyCard() {

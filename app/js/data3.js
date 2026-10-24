@@ -12,6 +12,9 @@ Object.assign(S, {
   c_veg: ['Vegetarian', 'शाकाहारी', 'ベジタリアン', 'さいしょく'],
   c_halal: ['Halal', 'हलाल', 'ハラール', 'はらーる'],
   c_gf: ['Gluten-free', 'ग्लुटेन-मुक्त', 'グルテンフリー', 'ぐるてんふりー'],
+  c_hindu: ['Hindu (no beef)', 'हिन्दू (गाईको मासु बिना)', 'ヒンドゥー（牛肉なし）', 'ひんどぅー（ぎゅうにく なし）'],
+  f_hindu: ['Hindu (no beef)', 'हिन्दू (गाईको मासु बिना)', 'ヒンドゥー（牛肉なし）', 'ひんどぅー（ぎゅうにく なし）'],
+  hindu_note: ['Hindu: beef is avoided and many people are vegetarian. The menu filter hides beef; choose "Vegetarian" too if you avoid all meat. Beef and meat stock can hide in sauces, so ask staff.', 'हिन्दू: गाईको मासु नखाइने र धेरै शाकाहारी हुन्छन्। मेनु फिल्टरले गाईको मासु लुकाउँछ; सबै मासु नखाए "शाकाहारी" पनि छान्नुहोस्। सस वा सूपमा मासु हुन सक्छ, कर्मचारीलाई सोध्नुहोस्।', 'ヒンドゥー教：牛肉を避け、ベジタリアンの人も多いです。メニューは牛肉を非表示にします。肉を全部避けるなら「ベジタリアン」も選んでください。ソースやだしに肉が入ることがあるので店員さんに確認を。', 'ひんどぅーきょう：ぎゅうにくを さけ、さいしょくの ひとも おおいです。めにゅーは ぎゅうにくを かくします。にくを ぜんぶ さけるなら「さいしょく」も えらんで ください。そーすや だしに にくが はいる ことが あるので てんいんに かくにん を。'],
   a_crab: ['crab', 'केकडा', 'かに', 'かに'],
   a_peanut: ['peanut', 'बदाम (मूँगफली)', '落花生', 'らっかせい'],
   a_buckwheat: ['buckwheat', 'फापर', 'そば', 'そば'],
@@ -55,8 +58,10 @@ Object.assign(PLACE_TYPES, {
   veg: { type: 'vegetarian_restaurant', icon: '🥗', q: 'vegetarian restaurant' },
   halal: { text: 'halal restaurant', icon: '🥙', q: 'halal restaurant' },
   gf: { text: 'gluten free restaurant', icon: '🌾', q: 'gluten free restaurant' },
+  hindu: { text: 'Indian vegetarian restaurant', icon: '🕉️', q: 'Indian vegetarian restaurant' },
 });
-const GROUPS = { safety: ['police', 'hospital', 'pharmacy'], daily: ['shop', 'toilet', 'atm', 'exchange', 'trash'], travel: ['charge', 'rental', 'locker'], food: ['veg', 'halal', 'gf'] };
+const GROUPS = { safety: ['police', 'hospital', 'pharmacy'], daily: ['shop', 'toilet', 'atm', 'exchange', 'trash'], travel: ['charge', 'rental', 'locker'], food: ['veg', 'halal', 'hindu', 'gf'] };
+const DIETS = ['veg', 'halal', 'hindu', 'gf'];
 
 POI.push(
   { type: 'pharmacy', en: 'Pharmacy (Shinjuku)', ja: '薬局（新宿）', hi: 'やっきょく（しんじゅく）', lat: 35.691, lng: 139.702 },
@@ -66,6 +71,7 @@ POI.push(
   { type: 'locker', en: 'Coin lockers (Shinjuku Station)', ja: 'コインロッカー（新宿駅）', hi: 'こいんろっかー（しんじゅくえき）', lat: 35.6898, lng: 139.7 },
   { type: 'veg', en: 'Vegetarian cafe (sample)', ja: 'ベジタリアンカフェ（サンプル）', hi: 'さいしょく かふぇ（さんぷる）', lat: 35.6942, lng: 139.7031 },
   { type: 'halal', en: 'Halal restaurant (sample)', ja: 'ハラールレストラン（サンプル）', hi: 'はらーる れすとらん（さんぷる）', lat: 35.7013, lng: 139.7 },
+  { type: 'hindu', en: 'Indian vegetarian restaurant (sample)', ja: 'インド料理ベジタリアン（サンプル）', hi: 'いんど りょうり さいしょく（さんぷる）', lat: 35.6957, lng: 139.7048 },
   { type: 'gf', en: 'Gluten-free cafe (sample)', ja: 'グルテンフリーカフェ（サンプル）', hi: 'ぐるてんふりー かふぇ（さんぷる）', lat: 35.6874, lng: 139.6985 },
 );
 
@@ -77,6 +83,8 @@ const ALLERGEN_JA = {
   pork: ['豚肉', 'ぶたにく'], beef: ['牛肉', 'ぎゅうにく'], chicken: ['鶏肉', 'とりにく'], alcohol: ['お酒', 'おさけ'],
 };
 DISHES.soba = { ja: 'ざるそば', hi: 'ざるそば', n: ['Cold soba (buckwheat noodles)', 'चिसो सोबा (फापरको नुडल्स)'], price: 800, al: ['buckwheat', 'wheat', 'soy'] };
-MENUS[1].items.push('soba');
+DISHES.gyudon = { ja: '牛丼', hi: 'ぎゅうどん', n: ['Beef rice bowl', 'गाईको मासु भात'], price: 650, al: ['beef', 'soy', 'wheat'] };
+MENUS[1].items.push('soba', 'gyudon');
+PHRASES.push({ id: 'nobeef', cat: 'food', en: 'I cannot eat beef', np: 'म गाईको मासु खान सक्दिनँ', ja: '牛肉は食べられません', hi: 'ぎゅうにくは たべられません', ro: 'gyuuniku wa taberaremasen' });
 
 const FEATURES = [['help', 'help_btn'], ['map', 'map'], ['phrases', 'phrases'], ['chat', 'ai'], ['sos', 'sos'], ['menu', 'menu'], ['profile', 'profile'], ['listen', 'listen'], ['wait', 'wait'], ['plan', 'plan'], ['fare', 'fare'], ['tips', 'tips'], ['nearby', 'near_you']];
