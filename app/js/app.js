@@ -26,6 +26,8 @@ const st = {
   prefs: store.get('prefs', { allergens: [], diets: [] }),
   theme: store.get('theme', 'auto'),
 };
+st.prefs.off = st.prefs.off || [];
+const on = id => !st.prefs.off.includes(id);
 const ICON = {
   pin: '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg>',
   go: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M21 3L3 10.5l7 2.5 2.5 7z"/></svg>',
@@ -83,19 +85,19 @@ const go = v => { location.hash = '#/' + v; };
 function render() {
   const v = view();
   document.documentElement.lang = st.lang === 'np' ? 'ne' : st.lang === 'en' ? 'en' : 'ja';
-  const heads = { home: '', map: 'map', phrases: 'phrases', chat: 'ai', sos: 'emergency', menu: 'menu', wait: 'wait', plan: 'plan', fare: 'fare', help: 'help_btn', nearby: 'near_you', listen: 'listen', tips: 'tips', profile: 'profile', credits: 'credits' };
+  const heads = { home: '', map: 'map', phrases: 'phrases', chat: 'ai', sos: 'emergency', menu: 'menu', wait: 'wait', plan: 'plan', fare: 'fare', help: 'help_btn', nearby: 'near_you', listen: 'listen', tips: 'tips', profile: 'profile', credits: 'credits', settings: 'settings' };
   let html = '';
   if (v !== 'lang') {
     html += `<header class="top">
       <a class="logo" href="#/home"><img class="logoimg" src="logo.png" alt="" width="30" height="30"> ${tr('title')}</a>
       <select class="langsel" data-c="lang" aria-label="language">${LANGS.map(l => `<option value="${l.id}" ${l.id === st.lang ? 'selected' : ''}>${l.label}</option>`).join('')}</select>
-      <button class="themebtn" data-a="theme" aria-label="${tr('theme')}" title="${tr('theme')}">${st.theme === 'dark' ? '🌙' : st.theme === 'light' ? '☀️' : '🌓'}</button>
+      <a class="gearbtn" href="#/settings" aria-label="${tr('settings')}" title="${tr('settings')}">⚙️</a>
       <a class="sosbtn" href="#/sos">🆘 ${tr('sos')}</a></header>`;
     if (!TAB_VIEWS.includes(v)) html += `<div class="sub"><a href="#/home" class="back">← ${tr('back')}</a><b>${tr(heads[v] || 'home')}</b></div>`;
   }
   html += `<main class="view v-${v}">${(VIEWS[v] || VIEWS.home)()}</main>`;
   if (v !== 'lang') {
-    const tabs = [['home', '⌂'], ['map', '🗺'], ['phrases', '💬'], ['chat', '🤖'], ['sos', '🆘']];
+    const tabs = [['home', '⌂'], ['map', '🗺'], ['phrases', '💬'], ['chat', '🤖'], ['sos', '🆘']].filter(([id]) => id === 'home' || id === 'sos' || on(id));
     html += `<nav class="tabs">${tabs.map(([id, ic]) => `<a href="#/${id}" class="${id === v ? 'on' : ''}"><b>${ic}</b>${tr(id === 'chat' ? 'ai' : id)}</a>`).join('')}</nav>`;
   }
   $('#app').innerHTML = html;
@@ -132,24 +134,23 @@ const VIEWS = {
 
   home() {
     const tile = (href, ic, label) => `<a class="tile" href="${href}"><span class="ic">${ic}</span><b>${label}</b></a>`;
+    const section = (title, tiles, more) => (tiles.length ? `<h3>${title}${more || ''}</h3><div class="tiles">${tiles.join('')}</div>` : '');
     const around = ['police', 'hospital', 'toilet', 'shop', 'trash', 'charge', 'rental', 'locker'];
+    const talk = [on('phrases') && tile('#/phrases', '💬', tr('phrases')), on('listen') && tile('#/listen', '🎧', tr('listen')), on('menu') && tile('#/menu', '📷', tr('menu')), on('profile') && tile('#/profile', '🥜', tr('profile'))].filter(Boolean);
+    const planT = [on('plan') && tile('#/plan', '🧭', tr('plan')), on('fare') && tile('#/fare', '🚃', tr('fare')), on('wait') && tile('#/wait', '⏱️', tr('wait')), on('tips') && tile('#/tips', '💡', tr('tips'))].filter(Boolean);
     const top = topPhrases(3);
     return `<div class="gsearch"><input class="search" data-c="gsearch" autocomplete="off" placeholder="🔍 ${tr('search_all')}"><div id="gres" class="gres"></div></div>
       <a class="helpbig" href="#/help"><span class="hb">🆘</span><div><b>${tr('help_btn')}</b><small>${tr('help_sub')}</small></div></a>
-      ${nearStrip()}
-      <div class="box wx" id="wxhome"><small class="muted">${tr('weather')}…</small></div>
-      <h3>${tr('sec_around')} <a href="#/map" class="more">${tr('more_cats')} ›</a></h3>
-      <div class="tiles">${around.map(t => `<button class="tile" data-a="tomap" data-v="${t}"><span class="ic">${PLACE_TYPES[t].icon}</span><b>${tr('c_' + t)}</b></button>`).join('')}</div>
-      <h3>${tr('sec_talk')}</h3>
-      <div class="tiles">${tile('#/phrases', '💬', tr('phrases'))}${tile('#/listen', '🎧', tr('listen'))}${tile('#/menu', '📷', tr('menu'))}${tile('#/profile', '🥜', tr('profile'))}</div>
-      <h3>${tr('sec_plan')}</h3>
-      <div class="tiles">${tile('#/plan', '🧭', tr('plan'))}${tile('#/fare', '🚃', tr('fare'))}${tile('#/wait', '⏱️', tr('wait'))}${tile('#/tips', '💡', tr('tips'))}</div>
-      <h3>${tr('sights_pop')}</h3>
-      <div class="hscroll">${SPOTS.filter(s => s.pop >= 4).slice(0, 8).map(s => `<div class="scard" data-a="askspot" data-v="${s.id}">${phSlot(s.id, 'card')}<b>${esc(nm(s))}</b><small>${esc(nm(CITIES.find(c => c.id === s.city)))}</small></div>`).join('')}</div>
-      <div class="hello" data-a="nav" data-v="chat"><div class="avatar">🗾</div><div><b>${tr('greet_home')}</b><div class="badge">${tr('demo_ai')}</div></div></div>
-      <h3>${tr('most_used')} <a href="#/phrases" class="more">${tr('see_all')} ›</a></h3>
-      ${top.map(phraseCard).join('')}
-      <p class="muted small center">${tr('prototype')} · <a href="#/credits"><u>${tr('credits')}</u></a></p>`;
+      ${on('near') ? nearStrip() : ''}
+      ${on('weather') ? `<div class="box wx" id="wxhome"><small class="muted">${tr('weather')}…</small></div>` : ''}
+      ${on('map') ? section(tr('sec_around'), around.map(t => `<button class="tile" data-a="tomap" data-v="${t}"><span class="ic">${PLACE_TYPES[t].icon}</span><b>${tr('c_' + t)}</b></button>`), ` <a href="#/map" class="more">${tr('more_cats')} ›</a>`) : ''}
+      ${section(tr('sec_talk'), talk)}
+      ${section(tr('sec_plan'), planT)}
+      ${on('photos') ? `<h3>${tr('sights_pop')}</h3>
+      <div class="hscroll">${SPOTS.filter(s => s.pop >= 4).slice(0, 8).map(s => `<div class="scard" data-a="askspot" data-v="${s.id}">${phSlot(s.id, 'card')}<b>${esc(nm(s))}</b><small>${esc(nm(CITIES.find(c => c.id === s.city)))}</small></div>`).join('')}</div>` : ''}
+      ${on('chat') ? `<div class="hello" data-a="nav" data-v="chat"><div class="avatar">🗾</div><div><b>${tr('greet_home')}</b><div class="badge">${tr('demo_ai')}</div></div></div>` : ''}
+      ${on('phrases') ? `<h3>${tr('most_used')} <a href="#/phrases" class="more">${tr('see_all')} ›</a></h3>${top.map(phraseCard).join('')}` : ''}
+      <p class="muted small center">${tr('prototype')} · <a href="#/credits"><u>${tr('credits')}</u></a> · <a href="#/settings"><u>⚙ ${tr('settings')}</u></a></p>`;
   },
 
   phrases() {
@@ -191,6 +192,7 @@ const VIEWS = {
       <div class="box fill"><b>📍 ${tr('nearest_police')}</b>
         <div>${esc(nm(p))}</div><div class="small muted">${walkLabel(p.km)}</div>
         <div class="two"><a class="btn" href="${dirUrl(p)}" target="_blank" rel="noopener">${tr('go')} ▶</a><a class="btn" href="#/map">🗺 ${tr('map')}</a></div></div>
+      <div class="box fill" id="myaddr"><b>📍 ${tr('my_addr')}</b><small class="muted">${tr('addr_wait')}</small></div>
       <div class="two"><button class="btn pri" data-a="myloc">📱 ${tr('tell_loc')}</button><button class="btn" data-a="staff" data-v="help">🗣 ${tr('say_phrase')}</button></div>
       <p class="muted small">${tr('tel_hint')} ${tr('verify_num')}</p>${noteConfirm()}`;
   }
@@ -351,28 +353,80 @@ function onFix(p) {
   st.pos = next;
   if (st.me) st.me.setPosition(next);
   if (!first && moved < 40) return;
-  nearCache.clear(); st.addr = null;
+  nearCache.clear(); st.addr = null; st.addrInfo = null;
   const v = view();
   if (v === 'map') { if (st.map) st.map.setCenter(next); runMapSearch(!!st.map && !st.gmFail); }
   else if (['home', 'nearby', 'sos', 'help'].includes(v)) render();
   if (st.overlay && st.overlay.isLoc) { st.overlay = locOverlay(); renderOverlay(); }
 }
-async function address() {
-  if (st.addr != null) return st.addr;
-  if (!API_KEY || st.gmFail || !st.pos.real) return '';
-  try {
-    await loadGoogle();
-    const { Geocoder } = await google.maps.importLibrary('geocoding');
-    const r = await new Geocoder().geocode({ location: st.pos });
-    st.addr = (r.results[0] && r.results[0].formatted_address) || '';
-  } catch { st.addr = ''; }
-  return st.addr;
+// ---------- address for the police: Japanese address + postal code from the current position ----------
+const PREF_JA = ['北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県', '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県', '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県', '静岡県', '愛知県', '三重県', '滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県', '鳥取県', '島根県', '岡山県', '広島県', '山口県', '徳島県', '香川県', '愛媛県', '高知県', '福岡県', '佐賀県', '長崎県', '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県'];
+const DIGIT_JA = ['ぜろ', 'いち', 'に', 'さん', 'よん', 'ご', 'ろく', 'なな', 'はち', 'きゅう'];
+const addrCache = new Map();
+async function osmAddress(lang) {
+  const { lat, lng } = st.pos;
+  const j = await (await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=${lang}&addressdetails=1&zoom=18`)).json();
+  return j.address || {};
+}
+function joinAddr(a, ja) {
+  const iso = (a['ISO3166-2-lvl4'] || '').match(/^JP-(\d\d)$/);
+  const prefName = ja && iso ? PREF_JA[+iso[1] - 1] : '';
+  const road = a.road && !/;/.test(a.road) ? a.road : '';
+  const raw = [prefName, a.province, a.state, a.city, a.town, a.village, a.city_district, a.administrative, a.suburb, a.neighbourhood, a.quarter, road, a.house_number];
+  const parts = [];
+  raw.filter(Boolean).forEach(x => { if (!parts.some(y => y.includes(x))) parts.push(x); });
+  return ja ? parts.join(' ') : parts.reverse().join(', ');
+}
+async function googleAddress() {
+  if (!API_KEY || st.geoOK === false) return null;
+  const get = async lang => (await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${st.pos.lat},${st.pos.lng}&language=${lang}&key=${encodeURIComponent(API_KEY)}`)).json();
+  const jj = await get('ja');
+  if (jj.status !== 'OK') { st.geoOK = false; return null; }
+  const r0 = jj.results[0], postal = (r0.address_components.find(c => c.types.includes('postal_code')) || {}).long_name || '';
+  const ja = r0.formatted_address.replace(/^日本、\s*/, '').replace(/〒\d{3}-\d{4}\s*/, '');
+  const en = (await get('en')).results[0];
+  return { ja, en: en ? en.formatted_address : '', postal: postal.replace(/^〒/, '') };
+}
+async function addressInfo() {
+  const key = `${st.pos.lat.toFixed(4)},${st.pos.lng.toFixed(4)}`;
+  if (addrCache.has(key)) return addrCache.get(key);
+  const p = (async () => {
+    try {
+      const g = await googleAddress();
+      if (g) return g;
+      const ja = await osmAddress('ja');
+      await new Promise(r => setTimeout(r, 1100));   // Nominatim allows 1 request per second
+      const en = await osmAddress('en');
+      return { ja: joinAddr(ja, true), en: joinAddr(en, false) + (ja.postcode ? ' ' + ja.postcode : ''), postal: ja.postcode || en.postcode || '' };
+    } catch (err) { console.warn('Address lookup failed:', err.message || err); addrCache.delete(key); return null; }
+  })();
+  addrCache.set(key, p);
+  return p;
+}
+const postalSpoken = z => z.split(/[^0-9]+/).filter(Boolean).map(g => g.split('').map(d => DIGIT_JA[+d]).join(' ')).join(' の ');
+const sayAddress = i => `助けてください。今、${i.ja.replace(/\s+/g, '')}にいます。${i.postal ? `郵便番号は、${postalSpoken(i.postal)}です。` : ''}`;
+async function address() {   // short text for the Nearby page
+  const i = await addressInfo();
+  return i ? (st.lang === 'ja' || st.lang === 'hi' ? i.ja : (i.en || i.ja)) : '';
+}
+async function fillMyAddr() {
+  if (!$('#myaddr')) return;
+  const i = await addressInfo(), h = $('#myaddr'); if (!h) return;
+  st.addrInfo = i;
+  if (!i || (!i.ja && !i.postal)) { h.innerHTML = `<b>📍 ${tr('my_addr')}</b><small class="muted">${tr('addr_fail')}</small>`; return; }
+  h.innerHTML = `<b>📍 ${tr('my_addr')}</b>${st.pos.real ? '' : `<small class="muted">(${tr('sample_loc')})</small>`}
+    ${i.postal ? `<div class="postal"><small>${tr('postal')}</small> <b>〒${esc(i.postal)}</b></div>` : ''}
+    <div class="addr-ja" lang="ja">${esc(i.ja)}</div>${i.en ? `<div class="small muted">${esc(i.en)}</div>` : ''}
+    <div class="two"><button class="btn pri" data-a="readaddr">🔊 ${tr('read_police')}</button><button class="btn" data-a="myloc">📱 ${tr('show_big')}</button></div>
+    <small class="muted">${tr('addr_note')}</small>`;
 }
 function locOverlay() {
-  const url = `https://www.google.com/maps?q=${st.pos.lat},${st.pos.lng}`;
+  const url = `https://www.google.com/maps?q=${st.pos.lat},${st.pos.lng}`, i = st.addrInfo || null;
+  const spoken = i && i.ja ? sayAddress(i) : '助けてください。今ここにいます。';
   return {
-    isLoc: true, hi: 'たすけて ください。いま ここに います。', ja: '助けてください。今ここにいます。', src: tr('loc_text'), speak: '助けてください。今ここにいます。',
-    extra: `<div class="ov-loc">📍 ${st.pos.lat.toFixed(5)}, ${st.pos.lng.toFixed(5)}${st.pos.real ? '' : ' (sample)'}${st.addr ? '<br>' + esc(st.addr) : ''}<br><a href="${url}" target="_blank" rel="noopener">${url}</a><br><button class="btn" data-a="copyloc">${tr('copy')}</button></div>`,
+    isLoc: true, hi: 'たすけて ください。いま ここに います。', ja: '助けてください。今ここにいます。', src: tr('loc_text'), speak: spoken,
+    extra: `<div class="ov-addr">${i && i.postal ? `<div class="ov-postal">〒${esc(i.postal)}</div>` : ''}${i && i.ja ? `<div class="ov-aja" lang="ja">${esc(i.ja)}</div>` : `<small>${tr('addr_wait')}</small>`}${i && i.en ? `<small>${esc(i.en)}</small>` : ''}</div>
+      <div class="ov-loc">📍 ${st.pos.lat.toFixed(5)}, ${st.pos.lng.toFixed(5)}${st.pos.real ? '' : ' (' + tr('sample_loc') + ')'}<br><a href="${url}" target="_blank" rel="noopener">${url}</a><br><button class="btn" data-a="copyloc">${tr('copy')}</button></div>`,
   };
 }
 const locBanner = () => (st.pos.real
@@ -461,7 +515,7 @@ AFTER.nearby = () => {
   address().then(a => { const el = $('#addr'); if (el && a) el.innerHTML = `📍 ${tr('you_near')}: <b>${esc(a)}</b>`; });
 };
 AFTER.help = () => { if (st.help) { const h = HELP.find(x => x.id === st.help); if (h.poi) fillNear([h.poi], '#helpnear', true); } };
-AFTER.sos = () => { startLocation(); };
+AFTER.sos = () => { startLocation(); fillMyAddr(); };
 AFTER.plan = () => { loadRates(); fillPlanWeather(); };
 AFTER.fare = () => { fillFare(); };
 AFTER.wait = () => { loadWaitData(); };
@@ -495,9 +549,9 @@ function searchAll(raw) {
   if (q.length < 2) return [];
   const has = arr => arr.some(x => String(x).toLowerCase().includes(q));
   const out = [];
-  Object.keys(PLACE_TYPES).forEach(t => { if (has([...(S['c_' + t] || []), PLACE_TYPES[t].q])) out.push({ ic: PLACE_TYPES[t].icon, label: tr('c_' + t), sub: tr('map'), act: 'tomap', v: t }); });
-  FEATURES.forEach(([v, k]) => { if (has(S[k])) out.push({ ic: '➡️', label: tr(k), sub: '', act: 'nav', v }); });
-  PHRASES.filter(p => has([p.en, p.np, p.ja, p.hi, p.ro])).slice(0, 3).forEach(p => out.push({ ic: '💬', label: pick(p), sub: p.ja, act: 'staff', v: p.id }));
+  if (on('map')) Object.keys(PLACE_TYPES).forEach(t => { if (has([...(S['c_' + t] || []), PLACE_TYPES[t].q])) out.push({ ic: PLACE_TYPES[t].icon, label: tr('c_' + t), sub: tr('map'), act: 'tomap', v: t }); });
+  FEATURES.forEach(([v, k]) => { if ((v === 'help' || v === 'sos' || on(v === 'nearby' ? 'near' : v)) && has(S[k])) out.push({ ic: '➡️', label: tr(k), sub: '', act: 'nav', v }); });
+  (on('phrases') ? PHRASES : []).filter(p => has([p.en, p.np, p.ja, p.hi, p.ro])).slice(0, 3).forEach(p => out.push({ ic: '💬', label: pick(p), sub: p.ja, act: 'staff', v: p.id }));
   SPOTS.filter(s => has([s.en, s.ja, s.hi, ...s.keys])).slice(0, 2).forEach(s => out.push({ ic: '⛩', label: nm(s), sub: fmtDist(hav(st.pos, s)), act: 'spot', v: s.id }));
   return out.slice(0, 8);
 }
@@ -957,6 +1011,42 @@ async function loadWaitData() {
   if (view() === 'wait') render();
 }
 
+// ---------- settings: choose which features to show, text size, theme ----------
+Object.assign(S, {
+  settings: ['Settings', 'सेटिङ', '設定', 'せってい'],
+  show_features: ['Show only what you need', 'आफूलाई चाहिने मात्र देखाउनुहोस्', '必要な機能だけ表示', 'ひつような きのうだけ ひょうじ'],
+  always_on: ['SOS and "I need help" are always on.', 'SOS र "मलाई मद्दत चाहियो" सधैं खुला रहन्छन्।', 'SOSと「助けが必要です」は常に表示されます。', 'SOSと「たすけが ひつよう です」は いつも ひょうじ されます。'],
+  presets: ['Quick presets', 'छिटो छनोट', 'おまかせ設定', 'おまかせ せってい'],
+  preset_min: ['Minimal', 'न्यूनतम', '最小', 'さいしょう'],
+  preset_food: ['Food & allergy', 'खाना र एलर्जी', '食事・アレルギー', 'しょくじ・あれるぎー'],
+  preset_all: ['Everything', 'सबै', 'ぜんぶ', 'ぜんぶ'],
+  text_size: ['Text size', 'अक्षरको साइज', '文字の大きさ', 'もじの おおきさ'],
+  ts_s: ['Small', 'सानो', '小', 'ちいさい'],
+  ts_m: ['Normal', 'सामान्य', '標準', 'ふつう'],
+  ts_l: ['Large', 'ठूलो', '大', 'おおきい'],
+  th_auto: ['Auto', 'स्वचालित', '自動', 'じどう'],
+  th_light: ['Light', 'उज्यालो', 'ライト', 'らいと'],
+  th_dark: ['Dark', 'अँध्यारो', 'ダーク', 'だーく'],
+  reset_layout: ['Show everything again', 'सबै फेरि देखाउनुहोस्', 'ぜんぶ表示にもどす', 'ぜんぶ ひょうじに もどす'],
+  clear_data: ['Delete my saved data', 'मेरो सुरक्षित डाटा मेट्नुहोस्', '保存したデータを削除', 'ほぞんした でーたを さくじょ'],
+  clear_note: ['Removes allergies, pins, history and settings from this device.', 'यो उपकरणबाट एलर्जी, पिन, इतिहास र सेटिङ हटाउँछ।', 'この端末のアレルギー・ピン・履歴・設定を消します。', 'この たんまつの あれるぎー・ぴん・りれき・せっていを けします。'],
+  cleared: ['Deleted', 'मेटियो', '削除しました', 'さくじょ しました'],
+});
+const TOGGLES = [['near', 'near_you', '📍'], ['weather', 'weather', '🌤️'], ['photos', 'sights_pop', '🏯'], ['map', 'map', '🗺️'], ['phrases', 'phrases', '💬'], ['listen', 'listen', '🎧'], ['menu', 'menu', '📷'], ['profile', 'profile', '🥜'], ['plan', 'plan', '🧭'], ['fare', 'fare', '🚃'], ['wait', 'wait', '⏱️'], ['tips', 'tips', '💡'], ['chat', 'ai', '🤖']];
+const PRESETS = { min: TOGGLES.map(t => t[0]).filter(id => !['map', 'phrases'].includes(id)), food: ['near', 'weather', 'photos', 'listen', 'plan', 'fare', 'wait', 'tips', 'chat'], all: [] };
+const ZOOMS = [['s', 0.92], ['m', 1], ['l', 1.18]];
+function applyZoom() { document.documentElement.style.setProperty('--zoom', st.prefs.zoom || 1); }
+VIEWS.settings = () => `<h3>${tr('presets')}</h3>
+  <div class="chips">${['min', 'food', 'all'].map(k => `<button class="chip" data-a="preset" data-v="${k}">${tr('preset_' + k)}</button>`).join('')}</div>
+  <h3>${tr('show_features')}</h3><p class="muted small">${tr('always_on')}</p>
+  <div class="box switches">${TOGGLES.map(([id, k, ic]) => `<label class="switch"><span>${ic} ${tr(k)}</span><input type="checkbox" data-c="feat" data-id="${id}" ${on(id) ? 'checked' : ''}><i></i></label>`).join('')}</div>
+  <h3>${tr('text_size')}</h3>
+  <div class="chips">${ZOOMS.map(([k, z]) => `<button class="chip ${(st.prefs.zoom || 1) === z ? 'on' : ''}" data-a="zoom" data-v="${z}">${tr('ts_' + k)}</button>`).join('')}</div>
+  <h3>${tr('theme')}</h3>
+  <div class="chips">${['auto', 'light', 'dark'].map(k => `<button class="chip ${st.theme === k ? 'on' : ''}" data-a="settheme" data-v="${k}">${tr('th_' + k)}</button>`).join('')}</div>
+  <h3>${tr('credits')}</h3><a class="btn" href="#/credits">📷 ${tr('credits')}</a>
+  <button class="btn del big" data-a="cleardata">🗑 ${tr('clear_data')}</button><p class="muted small">${tr('clear_note')}</p>`;
+
 // ---------- photos (Wikimedia Commons, free licences, cached on the device) ----------
 const photoCache = store.get('photos', {}), photoPending = {};
 const plain = h => new DOMParser().parseFromString(h || '', 'text/html').body.textContent.trim();
@@ -1009,9 +1099,18 @@ document.addEventListener('click', e => {
     myloc() {
       startLocation();
       st.overlay = locOverlay(); renderOverlay();
-      address().then(() => { if (st.overlay && st.overlay.isLoc) { st.overlay = locOverlay(); renderOverlay(); } });
+      addressInfo().then(i => { st.addrInfo = i; if (st.overlay && st.overlay.isLoc) { st.overlay = locOverlay(); renderOverlay(); } });
     },
     tomap() { st.mapType = v; go('map'); },
+    settheme() { st.theme = v; store.set('theme', v); applyTheme(); render(); },
+    preset() { st.prefs.off = PRESETS[v].slice(); store.set('prefs', st.prefs); render(); },
+    zoom() { st.prefs.zoom = +v; store.set('prefs', st.prefs); applyZoom(); render(); },
+    cleardata() {
+      ['prefs', 'bins', 'usage', 'photos', 'rates', 'holidays', 'theme'].forEach(k => { try { localStorage.removeItem(k); } catch { /* blocked */ } });
+      st.prefs = { allergens: [], diets: [], off: [] }; st.usage = {}; st.theme = 'auto'; applyTheme(); applyZoom();
+      nearCache.clear(); el.textContent = '✓ ' + tr('cleared');
+    },
+    readaddr() { if (st.addrInfo) speak(sayAddress(st.addrInfo)); },
     allowloc() { startLocation(); },
     recenter() { startLocation(); if (st.map) st.map.setCenter(st.pos); },
     addbin() {
@@ -1071,6 +1170,7 @@ document.addEventListener('change', e => {
     ptotal() { st.plan.total = Math.max(0, +v || 0); render(); },
     pcurin() { st.plan.curIn = v; render(); },
     cur() { st.prefs.cur = v; store.set('prefs', st.prefs); render(); },
+    feat() { const id = e.target.dataset.id, i = st.prefs.off.indexOf(id); if (e.target.checked && i >= 0) st.prefs.off.splice(i, 1); if (!e.target.checked && i < 0) st.prefs.off.push(id); store.set('prefs', st.prefs); },
     ffrom() { st.fare.from = v; render(); },
     fto() { st.fare.to = v; render(); },
     photo() {
@@ -1097,6 +1197,7 @@ function startScan(idx) {
 window.addEventListener('hashchange', () => { if (st.overlay) st.overlay = null; if (view() !== 'help') st.help = null; render(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && st.overlay) { st.overlay = null; renderOverlay(); } });
 
+applyZoom();
 if (st.chosen) startLocation();
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { });
 render();

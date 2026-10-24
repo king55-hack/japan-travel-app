@@ -227,3 +227,20 @@ select{border:1.5px solid var(--line);border-radius:8px;padding:6px;font:inherit
 .nrow .nbtns .btn.go{padding:0 10px}
 .paper{-webkit-mask-image:linear-gradient(#000 65%,transparent);mask-image:linear-gradient(#000 65%,transparent)}
 .tile b{font-size:12px}.phslot figcaption{font-size:10px}.bars .b small{font-size:10px}
+/* v21: settings, address card */
+.gearbtn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:4px 8px;font-size:16px}
+.view>*{zoom:var(--zoom,1)}
+.switches{gap:0;padding:0 10px}
+.switch{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.switch:last-child{border-bottom:0}
+.switch input{position:absolute;opacity:0;width:0;height:0}
+.switch i{position:relative;width:46px;height:26px;border-radius:13px;background:#c9c5bb;transition:.2s;flex:none}
+.switch i::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s}
+.switch input:checked+i{background:var(--red)}
+.switch input:checked+i::after{left:23px}
+.switch input:focus-visible+i{outline:2px solid var(--ink);outline-offset:2px}
+.postal{font-size:20px}.postal b{font-size:24px}
+.addr-ja{font-size:20px;font-weight:700;line-height:1.35}
+.ov-addr{background:#222;border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:4px}
+.ov-postal{font-size:30px;font-weight:800;letter-spacing:1px}
+.ov-aja{font-size:22px;font-weight:700;line-height:1.35}
