@@ -22,7 +22,21 @@ const st = {
   plan: { city: 'tokyo', days: 2, budget: 2, interests: ['temple', 'food'], result: null },
   fare: { from: 'sensoji', to: 'meiji' },
   overlay: null,
+  prefs: store.get('prefs', { allergens: [], diets: [] }),
+  theme: store.get('theme', 'auto'),
 };
+const ICON = {
+  pin: '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg>',
+  go: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M21 3L3 10.5l7 2.5 2.5 7z"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M6 19a2 2 0 002 2h8a2 2 0 002-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>',
+};
+const darkMQ = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+function applyTheme() {
+  const dark = st.theme === 'dark' || (st.theme === 'auto' && darkMQ && darkMQ.matches);
+  document.documentElement.classList.toggle('dark', dark);
+}
+if (darkMQ && darkMQ.addEventListener) darkMQ.addEventListener('change', applyTheme);
+applyTheme();
 const L = () => LANGS.findIndex(l => l.id === st.lang);
 const tr = k => t(k, st.lang);
 const nm = o => (st.lang === 'ja' ? o.ja : st.lang === 'hi' ? o.hi : o.en);
@@ -67,12 +81,13 @@ const go = v => { location.hash = '#/' + v; };
 function render() {
   const v = view();
   document.documentElement.lang = st.lang === 'np' ? 'ne' : st.lang === 'en' ? 'en' : 'ja';
-  const heads = { home: '', map: 'map', phrases: 'phrases', chat: 'ai', sos: 'emergency', menu: 'menu', wait: 'wait', plan: 'plan', fare: 'fare', help: 'help_btn', nearby: 'near_you', listen: 'listen', tips: 'tips' };
+  const heads = { home: '', map: 'map', phrases: 'phrases', chat: 'ai', sos: 'emergency', menu: 'menu', wait: 'wait', plan: 'plan', fare: 'fare', help: 'help_btn', nearby: 'near_you', listen: 'listen', tips: 'tips', profile: 'profile' };
   let html = '';
   if (v !== 'lang') {
     html += `<header class="top">
       <a class="logo" href="#/home">⛩ ${tr('title')}</a>
       <select class="langsel" data-c="lang" aria-label="language">${LANGS.map(l => `<option value="${l.id}" ${l.id === st.lang ? 'selected' : ''}>${l.label}</option>`).join('')}</select>
+      <button class="themebtn" data-a="theme" aria-label="${tr('theme')}" title="${tr('theme')}">${st.theme === 'dark' ? '🌙' : st.theme === 'light' ? '☀️' : '🌓'}</button>
       <a class="sosbtn" href="#/sos">🆘 ${tr('sos')}</a></header>`;
     if (!TAB_VIEWS.includes(v)) html += `<div class="sub"><a href="#/home" class="back">← ${tr('back')}</a><b>${tr(heads[v] || 'home')}</b></div>`;
   }
@@ -113,12 +128,19 @@ const VIEWS = {
   },
 
   home() {
-    const cards = [['map', '🗺️', 'map', 'map_sub'], ['phrases', '💬', 'phrases', 'phr_sub'], ['menu', '📷', 'menu', 'menu_sub'], ['wait', '⏱️', 'wait', 'wait_sub'], ['plan', '🧭', 'plan', 'plan_sub'], ['fare', '🚃', 'fare', 'fare_sub'], ['listen', '🎧', 'listen', 'listen_sub'], ['tips', '💡', 'tips', 'tips_sub']];
-    const top = topPhrases(4);
-    return `<a class="helpbig" href="#/help"><span class="hb">🆘</span><div><b>${tr('help_btn')}</b><small>${tr('help_sub')}</small></div></a>
+    const tile = (href, ic, label) => `<a class="tile" href="${href}"><span class="ic">${ic}</span><b>${label}</b></a>`;
+    const around = ['police', 'hospital', 'toilet', 'shop', 'trash', 'charge', 'rental', 'locker'];
+    const top = topPhrases(3);
+    return `<div class="gsearch"><input class="search" data-c="gsearch" autocomplete="off" placeholder="🔍 ${tr('search_all')}"><div id="gres" class="gres"></div></div>
+      <a class="helpbig" href="#/help"><span class="hb">🆘</span><div><b>${tr('help_btn')}</b><small>${tr('help_sub')}</small></div></a>
       ${nearStrip()}
+      <h3>${tr('sec_around')} <a href="#/map" class="more">${tr('more_cats')} ›</a></h3>
+      <div class="tiles">${around.map(t => `<button class="tile" data-a="tomap" data-v="${t}"><span class="ic">${PLACE_TYPES[t].icon}</span><b>${tr('c_' + t)}</b></button>`).join('')}</div>
+      <h3>${tr('sec_talk')}</h3>
+      <div class="tiles">${tile('#/phrases', '💬', tr('phrases'))}${tile('#/listen', '🎧', tr('listen'))}${tile('#/menu', '📷', tr('menu'))}${tile('#/profile', '🥜', tr('profile'))}</div>
+      <h3>${tr('sec_plan')}</h3>
+      <div class="tiles">${tile('#/plan', '🧭', tr('plan'))}${tile('#/fare', '🚃', tr('fare'))}${tile('#/wait', '⏱️', tr('wait'))}${tile('#/tips', '💡', tr('tips'))}</div>
       <div class="hello" data-a="nav" data-v="chat"><div class="avatar">🗾</div><div><b>${tr('greet_home')}</b><div class="badge">${tr('demo_ai')}</div></div></div>
-      <div class="cards">${cards.map(([v, ic, a, b]) => `<a class="card" href="#/${v}"><span class="ic">${ic}</span><b>${tr(a)}</b><small>${tr(b)}</small></a>`).join('')}</div>
       <h3>${tr('most_used')} <a href="#/phrases" class="more">${tr('see_all')} ›</a></h3>
       ${top.map(phraseCard).join('')}
       <p class="muted small center">${tr('prototype')}</p>`;
@@ -137,8 +159,9 @@ const VIEWS = {
   },
 
   map() {
-    const types = ['police', 'hospital', 'trash', 'shop', 'toilet', 'atm'];
-    return `<div class="chips mapchips">${types.map(c => `<button class="chip ${c === st.mapType ? 'on' : ''}" data-a="maptype" data-v="${c}">${PLACE_TYPES[c].icon} ${tr('c_' + c)}</button>`).join('')}</div>
+    const grp = Object.keys(GROUPS).find(g => GROUPS[g].includes(st.mapType)) || 'safety';
+    return `<div class="mapnav"><div class="gtabs">${Object.keys(GROUPS).map(g => `<button class="gtab ${g === grp ? 'on' : ''}" data-a="mapgroup" data-v="${g}">${tr('g_' + g)}</button>`).join('')}</div>
+      <div class="chips mapchips">${GROUPS[grp].map(c => `<button class="chip ${c === st.mapType ? 'on' : ''}" data-a="maptype" data-v="${c}">${PLACE_TYPES[c].icon} ${tr('c_' + c)}</button>`).join('')}</div></div>
       <div id="mapbox" class="mapbox"><div class="mapfall"></div></div>
       <div id="sheet" class="sheetlist"><p class="muted">${tr('loading')}</p></div>`;
   },
@@ -174,13 +197,16 @@ const VIEWS = {
     if (m.scanning) items = `<div class="scan"><div class="spin"></div>${tr('scanning')}</div>`;
     else if (m.items) {
       const fl = m.filter;
-      const ok = d => fl === 'all' || (fl === 'veg' && !d.al.some(a => ['pork', 'beef', 'chicken', 'fish', 'shrimp'].includes(a))) ||
+      const mine = d => d.al.filter(a => st.prefs.allergens.includes(a));
+      const ok = d => fl === 'all' || (fl === 'safe' && !mine(d).length) || (fl === 'veg' && !d.al.some(a => ['pork', 'beef', 'chicken', 'fish', 'shrimp'].includes(a))) ||
         (fl === 'halal' && !d.al.some(a => a === 'pork' || a === 'alcohol')) || (fl === 'nopork' && !d.al.includes('pork'));
-      items = `<div class="chips">${['all', 'veg', 'halal', 'nopork'].map(f => `<button class="chip ${f === fl ? 'on' : ''}" data-a="mfilter" data-v="${f}">${tr('f_' + f)}</button>`).join('')}</div>` +
+      const fchips = st.prefs.allergens.length ? ['safe', 'all', 'veg', 'halal', 'nopork'] : ['all', 'veg', 'halal', 'nopork'];
+      items = `<a class="chip" href="#/profile">🥜 ${tr('profile')}${st.prefs.allergens.length ? ' (' + st.prefs.allergens.length + ')' : ''}</a><div class="chips">${fchips.map(f => `<button class="chip ${f === fl ? 'on' : ''}" data-a="mfilter" data-v="${f}">${tr('f_' + f)}</button>`).join('')}</div>` +
         m.items.map(id => DISHES[id]).filter(ok).map((d, i) => {
           const id = m.items.find(k => DISHES[k] === d);
           const name = st.lang === 'ja' ? d.ja : st.lang === 'hi' ? d.hi : d.n[st.lang === 'np' ? 1 : 0];
-          return `<div class="box dish"><div class="row"><div><div class="big" lang="ja">${d.ja}</div><small lang="ja">${d.hi}</small></div><b>${yen(d.price)}</b></div>
+          const bad = mine(d);
+          return `<div class="box dish ${bad.length ? 'danger' : ''}">${bad.length ? `<div class="alert">⚠ ${tr('you_allergic')}: ${bad.map(a => tr('a_' + a)).join(', ')}</div>` : ''}<div class="row"><div><div class="big" lang="ja">${d.ja}</div><small lang="ja">${d.hi}</small></div><b>${yen(d.price)}</b></div>
             <div>→ <b>${esc(name)}</b></div>
             <div>${d.al.length ? `<small>${tr('contains')}:</small> ` + d.al.map(a => `<span class="al ${['pork', 'alcohol'].includes(a) ? 'warn' : ''}">${tr('a_' + a)}</span>`).join('') : '<span class="al ok">✓</span>'}</div>
             <button class="btn" data-a="order" data-v="${id}">🗣 ${tr('order_this')}</button></div>`;
@@ -313,11 +339,10 @@ async function initMapView() {
   }
   if (!ok && $('#mapbox')) {
     $('#mapbox').innerHTML = `<div class="mapfall"><div class="pinbig">🗺️</div><p>${tr('no_key')}</p>
-      <a class="btn" target="_blank" rel="noopener" href="https://www.google.com/maps/search/${encodeURIComponent(MAP_QUERY[st.mapType])}/@${st.pos.lat},${st.pos.lng},16z">${tr('open_gmaps')}</a></div>`;
+      <a class="btn" target="_blank" rel="noopener" href="https://www.google.com/maps/search/${encodeURIComponent(PLACE_TYPES[st.mapType].q)}/@${st.pos.lat},${st.pos.lng},16z">${tr('open_gmaps')}</a></div>`;
   }
   runMapSearch(ok);
 }
-const MAP_QUERY = { police: 'police station', hospital: 'hospital', trash: 'trash can', shop: 'convenience store', toilet: 'public toilet', atm: 'ATM' };
 
 // ---------- nearby search (Google Places New / OpenStreetMap / sample) ----------
 const nearCache = new Map();
@@ -334,12 +359,10 @@ async function fetchNear(type) {
       await loadGoogle();
       // Places API (New) must be enabled on the key's project
       const { Place } = await google.maps.importLibrary('places');
-      const { places } = await Place.searchNearby({
-        fields: ['displayName', 'location', 'formattedAddress'],
-        locationRestriction: { center: st.pos, radius: 2000 },
-        includedPrimaryTypes: [PLACE_TYPES[type].type],
-        maxResultCount: 12,
-      });
+      const cfg = PLACE_TYPES[type], fields = ['displayName', 'location', 'formattedAddress'];
+      const { places } = cfg.text
+        ? await Place.searchByText({ textQuery: cfg.text, fields, locationBias: { center: st.pos, radius: 3000 }, maxResultCount: 12 })
+        : await Place.searchNearby({ fields, locationRestriction: { center: st.pos, radius: 2000 }, includedPrimaryTypes: [cfg.type], maxResultCount: 12 });
       list = (places || []).map(p => ({ name: p.displayName, sub: p.formattedAddress, lat: p.location.lat(), lng: p.location.lng() }));
     }
   } catch (err) { console.warn('Nearby search failed, using sample data:', err.message || err); }
@@ -352,7 +375,7 @@ async function fetchNear(type) {
 // trash bins: OpenStreetMap (free, no key) + pins added by travellers on this device
 async function trashNear() {
   const here = st.pos;
-  const pins = store.get('bins', []).filter(b => hav(here, b) < 1).map(b => ({ name: null, pin: true, lat: b.lat, lng: b.lng }));
+  const pins = store.get('bins', []).filter(b => hav(here, b) < 1).map(b => ({ name: null, pin: b.t, lat: b.lat, lng: b.lng }));
   let osm = [];
   try {
     // public Overpass servers can be slow: ask two in parallel and take the first good answer
@@ -387,7 +410,8 @@ async function runMapSearch(useGoogle) {
       <button class="chip" data-a="recenter">📍 ${tr('recenter')}</button></div>
     ${st.pos.real ? '' : `<p class="muted small">${tr('using_sample')} <button class="chip" data-a="allowloc">${tr('allow_loc')}</button></p>`}
     ${list.length ? list.map((p, i) => `<div class="box row poi" id="poi-${i}"><div><b>${esc(pname(p, type))}</b><div class="small muted">${fmtDist(p.km)} · ${walkMin(p.km)} ${tr('walk_min')}${p.sub ? ' · ' + esc(p.sub) : ''}</div></div>
-      <a class="btn" target="_blank" rel="noopener" href="${dirUrl(p)}">${tr('go')} ▶</a></div>`).join('') : `<p class="muted">${tr('nothing')}</p>`}
+      <div class="nbtns">${p.pin ? `<button class="btn ico del" data-a="delbin" data-v="${p.pin}" aria-label="${tr('delete')}" title="${tr('delete')}">${ICON.trash}</button>` : ''}<a class="btn go" target="_blank" rel="noopener" href="${dirUrl(p)}">${ICON.go}${tr('go')}</a></div></div>`).join('') : `<p class="muted">${tr('nothing')}</p>`}
+    ${GROUPS.food.includes(type) ? `<p class="muted small">${tr('diet_note')}</p>` : ''}
     ${type === 'police' ? `<div class="two"><a class="btn sos" href="tel:110">📞 110</a><button class="btn" data-a="staff" data-v="police">🗣 ${tr('say_phrase')}</button></div>` : ''}
     ${type === 'trash' ? `<button class="btn" data-a="addbin">🗑️ ${tr('add_bin')}</button><p class="muted small">${tr('from_osm')}</p>` : ''}
     ${sample ? `<p class="muted small">${tr('sample_poi_note')}</p>` : ''}`;
@@ -436,11 +460,11 @@ const locBanner = () => (st.pos.real
 
 // ---------- near-you strips ----------
 const NEAR_HOME = ['police', 'hospital', 'shop', 'toilet', 'trash'];
-const NEAR_ALL = ['police', 'hospital', 'trash', 'shop', 'toilet', 'atm'];
+const NEAR_ALL = ['police', 'hospital', 'pharmacy', 'shop', 'toilet', 'atm', 'trash', 'charge', 'rental', 'locker'];
 const nearStrip = () => `<div class="box near"><div class="row"><b>📍 ${tr('near_you')}</b><a class="more" href="#/nearby">${tr('see_all')} ›</a></div>${locBanner()}<div id="nearrows" class="nearrows"><small class="muted">${tr('loading')}</small></div></div>`;
 function nearRow(type, p, big) {
   return `<div class="nrow ${big ? 'box' : ''}"><div><b>${PLACE_TYPES[type].icon} ${tr('c_' + type)}</b><div class="small">${esc(pname(p, type))} · <span class="muted">${fmtDist(p.km)} · ${walkMin(p.km)} ${tr('walk_min')}</span></div></div>
-    <div class="nbtns"><a class="btn" target="_blank" rel="noopener" href="${dirUrl(p)}">${tr('go')}</a><button class="btn" data-a="tomap" data-v="${type}">🗺</button></div></div>`;
+    <div class="nbtns">${p.pin ? `<button class="btn ico del" data-a="delbin" data-v="${p.pin}" aria-label="${tr('delete')}">${ICON.trash}</button>` : ''}<a class="btn go" target="_blank" rel="noopener" href="${dirUrl(p)}">${ICON.go}${tr('go')}</a><button class="btn ico" data-a="tomap" data-v="${type}" aria-label="${tr('map_btn')}" title="${tr('map_btn')}">${ICON.pin}</button></div></div>`;
 }
 async function fillNear(types, hostSel, big) {
   const host = $(hostSel); if (!host) return;
@@ -514,6 +538,49 @@ AFTER.nearby = () => {
 };
 AFTER.help = () => { if (st.help) { const h = HELP.find(x => x.id === st.help); if (h.poi) fillNear([h.poi], '#helpnear', true); } };
 AFTER.sos = () => { startLocation(); };
+
+VIEWS.profile = () => {
+  const p = st.prefs;
+  return `<p class="muted">${tr('profile_sub')}</p>
+    <b>${tr('my_allergies')}</b>
+    <div class="chips">${ALLERGENS.map(a => `<button class="chip ${p.allergens.includes(a) ? 'on' : ''}" data-a="ptoggle" data-k="allergens" data-v="${a}">${tr('a_' + a)}</button>`).join('')}</div>
+    <button class="btn pri big" data-a="acard">🗣 ${tr('allergy_card')}</button>
+    <a class="btn" href="#/menu">📷 ${tr('menu')}</a>
+    <b>${tr('my_diet')}</b>
+    <div class="chips">${['veg', 'halal', 'gf'].map(d => `<button class="chip ${p.diets.includes(d) ? 'on' : ''}" data-a="ptoggle" data-k="diets" data-v="${d}">${PLACE_TYPES[d].icon} ${tr('c_' + d)}</button>`).join('')}</div>
+    ${p.diets.map(d => `<button class="btn" data-a="tomap" data-v="${d}">${PLACE_TYPES[d].icon} ${tr('c_' + d)} · ${tr('map')}</button>`).join('')}
+    <p class="muted small">${tr('diet_note')}</p><p class="muted small">${tr('saved_auto')}</p>`;
+};
+function allergyCard() {
+  const keys = st.prefs.allergens;
+  if (!keys.length) return null;
+  const ja = keys.map(k => ALLERGEN_JA[k][0]).join('、'), hi = keys.map(k => ALLERGEN_JA[k][1]).join('、');
+  return {
+    hi: `わたしは ${hi}の あれるぎーが あります。${hi}は はいって いますか？`,
+    ja: `私は${ja}のアレルギーがあります。${ja}は入っていますか？`,
+    src: `${tr('my_allergies')}: ${keys.map(k => tr('a_' + k)).join(', ')}`,
+    speak: `私は${ja}のアレルギーがあります。${ja}は入っていますか？`,
+  };
+}
+function searchAll(raw) {
+  const q = raw.trim().toLowerCase();
+  if (q.length < 2) return [];
+  const has = arr => arr.some(x => String(x).toLowerCase().includes(q));
+  const out = [];
+  Object.keys(PLACE_TYPES).forEach(t => { if (has([...(S['c_' + t] || []), PLACE_TYPES[t].q])) out.push({ ic: PLACE_TYPES[t].icon, label: tr('c_' + t), sub: tr('map'), act: 'tomap', v: t }); });
+  FEATURES.forEach(([v, k]) => { if (has(S[k])) out.push({ ic: '➡️', label: tr(k), sub: '', act: 'nav', v }); });
+  PHRASES.filter(p => has([p.en, p.np, p.ja, p.hi, p.ro])).slice(0, 3).forEach(p => out.push({ ic: '💬', label: pick(p), sub: p.ja, act: 'staff', v: p.id }));
+  SPOTS.filter(s => has([s.en, s.ja, s.hi, ...s.keys])).slice(0, 2).forEach(s => out.push({ ic: '⛩', label: nm(s), sub: fmtDist(hav(st.pos, s)), act: 'spot', v: s.id }));
+  return out.slice(0, 8);
+}
+document.addEventListener('input', e => {
+  if (e.target.dataset.c !== 'gsearch') return;
+  const res = searchAll(e.target.value), host = $('#gres');
+  if (!host) return;
+  host.innerHTML = e.target.value.trim().length < 2 ? '' : res.length
+    ? res.map(r => `<button class="gr" data-a="${r.act}" data-v="${esc(r.v)}"><span>${r.ic}</span><b>${esc(r.label)}</b><small>${esc(r.sub)}</small></button>`).join('')
+    : `<div class="gr muted">${tr('no_results')}</div>`;
+});
 
 // ---------- dummy AI (keyword / intent scoring) ----------
 const INTENTS = [
@@ -648,6 +715,20 @@ document.addEventListener('click', e => {
       el.textContent = '✓ ' + tr('bin_added');
       setTimeout(() => { if (view() === 'map') runMapSearch(!!st.map && !st.gmFail); else if (view() === 'nearby') render(); }, 900);
     },
+    theme() { st.theme = { auto: 'light', light: 'dark', dark: 'auto' }[st.theme]; store.set('theme', st.theme); applyTheme(); render(); },
+    mapgroup() { st.mapType = GROUPS[v][0]; render(); },
+    delbin() {
+      store.set('bins', store.get('bins', []).filter(b => String(b.t) !== String(v)));
+      [...nearCache.keys()].filter(k => k.startsWith('trash:')).forEach(k => nearCache.delete(k));
+      if (view() === 'map') runMapSearch(!!st.map && !st.gmFail); else render();
+    },
+    ptoggle() {
+      const arr = st.prefs[el.dataset.k], i = arr.indexOf(v);
+      if (i < 0) arr.push(v); else arr.splice(i, 1);
+      store.set('prefs', st.prefs); render();
+    },
+    acard() { const c = allergyCard(); if (!c) { el.textContent = tr('allergy_none'); return; } st.overlay = c; renderOverlay(); },
+    spot() { const s = SPOTS.find(x => x.id === v); window.open(dirUrl(s, 'transit'), '_blank', 'noopener'); },
     hopt() { st.help = v; render(); },
     hback() { st.help = null; render(); },
     listenmic() { runListen(); },
@@ -699,7 +780,7 @@ document.addEventListener('submit', e => {
   if (e.target.dataset.f === 'chat') { e.preventDefault(); const i = $('#chatin'); const v = i.value; i.value = ''; sendChat(v); $('#chatin')?.focus(); }
 });
 function startScan(idx) {
-  const m = st.menu; m.idx = idx; m.items = null; m.scanning = true; m.filter = 'all'; render();
+  const m = st.menu; m.idx = idx; m.items = null; m.scanning = true; m.filter = st.prefs.allergens.length ? 'safe' : 'all'; render();
   setTimeout(() => { m.scanning = false; m.items = MENUS[idx].items; if (view() === 'menu') render(); }, 1300);
 }
 window.addEventListener('hashchange', () => { if (st.overlay) st.overlay = null; if (view() !== 'help') st.help = null; render(); });
