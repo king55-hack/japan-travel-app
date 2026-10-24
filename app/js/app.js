@@ -19,7 +19,8 @@ const st = {
   chat: [],
   menu: { img: null, idx: 0, items: null, scanning: false, filter: 'all' },
   wait: { group: 'air', sel: 'ntr1' },
-  plan: { city: 'tokyo', days: 2, budget: 2, interests: ['temple', 'food'], result: null },
+  plan: { city: 'tokyo', days: 2, people: 1, budget: 1, total: '', curIn: 'JPY', interests: ['temple', 'food'], result: null },
+  cv: { amt: 1000 },
   fare: { from: 'sensoji', to: 'meiji' },
   overlay: null,
   prefs: store.get('prefs', { allergens: [], diets: [] }),
@@ -135,6 +136,7 @@ const VIEWS = {
     return `<div class="gsearch"><input class="search" data-c="gsearch" autocomplete="off" placeholder="🔍 ${tr('search_all')}"><div id="gres" class="gres"></div></div>
       <a class="helpbig" href="#/help"><span class="hb">🆘</span><div><b>${tr('help_btn')}</b><small>${tr('help_sub')}</small></div></a>
       ${nearStrip()}
+      <div class="box wx" id="wxhome"><small class="muted">${tr('weather')}…</small></div>
       <h3>${tr('sec_around')} <a href="#/map" class="more">${tr('more_cats')} ›</a></h3>
       <div class="tiles">${around.map(t => `<button class="tile" data-a="tomap" data-v="${t}"><span class="ic">${PLACE_TYPES[t].icon}</span><b>${tr('c_' + t)}</b></button>`).join('')}</div>
       <h3>${tr('sec_talk')}</h3>
@@ -172,7 +174,7 @@ const VIEWS = {
   chat() {
     if (!st.chat.length) st.chat.push({ me: false, k: 'chat_hello' });
     const quick = ['⛩ Senso-ji', '🚓 Police?', '🚻 Toilet?', '🍜 Food?', '🚃 Train?', '⏱ Wait?'];
-    return `<div class="chathead"><div class="avatar">🗾</div><div><b>${tr('ai')}</b><div class="badge">${tr('demo_ai')}</div></div></div>
+    return `<div class="chathead"><div class="avatar">🗾</div><div><b>${tr('ai')}</b></div></div>${trust('ai', 'demo')}
       <div id="msgs" class="msgs">${st.chat.map(chatBubble).join('')}</div>
       <div class="chips quick">${quick.map(q => `<button class="chip" data-a="quick" data-v="${esc(q.split(' ').slice(1).join(' '))}">${q}</button>`).join('')}</div>
       <form class="chatform" data-f="chat"><input id="chatin" autocomplete="off" placeholder="${tr('ask_ph')}">
@@ -189,93 +191,8 @@ const VIEWS = {
         <div>${esc(nm(p))} · ${fmtDist(p.km)} · ${walkMin(p.km)} ${tr('walk_min')}</div>
         <div class="two"><a class="btn" href="${dirUrl(p)}" target="_blank" rel="noopener">${tr('go')} ▶</a><a class="btn" href="#/map">🗺 ${tr('map')}</a></div></div>
       <div class="two"><button class="btn pri" data-a="myloc">📱 ${tr('tell_loc')}</button><button class="btn" data-a="staff" data-v="help">🗣 ${tr('say_phrase')}</button></div>
-      <p class="muted small">${tr('tel_hint')} ${tr('verify_num')}</p>`;
-  },
-
-  menu() {
-    const m = st.menu, menu = MENUS[m.idx];
-    const paper = m.img ? `<img class="photo" src="${m.img}" alt="menu photo">` :
-      `<div class="paper">${menu.items.map(id => `<div><span lang="ja">${DISHES[id].ja}</span><i>${yen(DISHES[id].price)}</i></div>`).join('')}</div>`;
-    let items = '';
-    if (m.scanning) items = `<div class="scan"><div class="spin"></div>${tr('scanning')}</div>`;
-    else if (m.items) {
-      const fl = m.filter;
-      const mine = d => d.al.filter(a => st.prefs.allergens.includes(a));
-      const ok = d => fl === 'all' || (fl === 'safe' && !mine(d).length) || (fl === 'veg' && !d.al.some(a => ['pork', 'beef', 'chicken', 'fish', 'shrimp'].includes(a))) ||
-        (fl === 'halal' && !d.al.some(a => a === 'pork' || a === 'alcohol')) || (fl === 'hindu' && !d.al.includes('beef')) || (fl === 'nopork' && !d.al.includes('pork'));
-      const fchips = (st.prefs.allergens.length ? ['safe'] : []).concat(['all', 'veg', 'halal', 'hindu', 'nopork']);
-      items = `<a class="chip" href="#/profile">🥜 ${tr('profile')}${st.prefs.allergens.length ? ' (' + st.prefs.allergens.length + ')' : ''}</a><div class="chips">${fchips.map(f => `<button class="chip ${f === fl ? 'on' : ''}" data-a="mfilter" data-v="${f}">${tr('f_' + f)}</button>`).join('')}</div>` +
-        m.items.map(id => DISHES[id]).filter(ok).map((d, i) => {
-          const id = m.items.find(k => DISHES[k] === d);
-          const name = st.lang === 'ja' ? d.ja : st.lang === 'hi' ? d.hi : d.n[st.lang === 'np' ? 1 : 0];
-          const bad = mine(d);
-          return `<div class="box dish ${bad.length ? 'danger' : ''}">${bad.length ? `<div class="alert">⚠ ${tr('you_allergic')}: ${bad.map(a => tr('a_' + a)).join(', ')}</div>` : ''}<div class="row"><div><div class="big" lang="ja">${d.ja}</div><small lang="ja">${d.hi}</small></div><b>${yen(d.price)}</b></div>
-            <div>→ <b>${esc(name)}</b></div>
-            <div>${d.al.length ? `<small>${tr('contains')}:</small> ` + d.al.map(a => `<span class="al ${['pork', 'alcohol'].includes(a) ? 'warn' : ''}">${tr('a_' + a)}</span>`).join('') : '<span class="al ok">✓</span>'}</div>
-            <button class="btn" data-a="order" data-v="${id}">🗣 ${tr('order_this')}</button></div>`;
-        }).join('');
-    }
-    return `<div class="badge">${tr('demo')}</div>
-      <div class="menuimg">${paper}</div>
-      <div class="two">
-        <label class="btn pri filebtn">📸 ${tr('take_photo')}<input type="file" accept="image/*" capture="environment" data-c="photo" hidden></label>
-        <button class="btn" data-a="msample">${tr('sample_menu')}</button></div>
-      <div id="menuout">${items}</div>
-      <p class="muted small">${tr('menu_note')}</p>`;
-  },
-
-  wait() {
-    const w = st.wait, groups = ['air', 'sight'];
-    const list = WAIT_PLACES.filter(p => p.group === w.group);
-    const now = new Date(), hr = now.getHours();
-    const sel = WAIT_PLACES.find(p => p.id === w.sel) || list[0];
-    const lvl = v => (v < .3 ? 0 : v < .6 ? 1 : v < .8 ? 2 : 3);
-    const mins = (p, v) => Math.max(0, Math.round(v * p.max / 5) * 5);
-    const hrs = []; for (let h = (sel.kind === 'air' ? 6 : 8); h <= (sel.kind === 'air' ? 23 : 19); h++) hrs.push(h);
-    const best = hrs.reduce((a, h) => (waitLoad(sel, h, now) < waitLoad(sel, a, now) ? h : a), hrs[0]);
-    return `<div class="badge">${tr('simulated')}</div>
-      <div class="chips">${groups.map(g => `<button class="chip ${g === w.group ? 'on' : ''}" data-a="wgroup" data-v="${g}">${g === 'air' ? '✈️' : '⛩'} ${tr(g === 'air' ? 'airports' : 'sights')}</button>`).join('')}</div>
-      ${list.map(p => { const v = waitLoad(p, hr, now); return `<div class="box wait ${p.id === sel.id ? 'sel' : ''}" data-a="wsel" data-v="${p.id}">
-        <div class="row"><b>${esc(nm(p))}</b><span class="lv l${lvl(v)}">${tr('lvl' + lvl(v))}</span></div>
-        <div class="meter"><i class="l${lvl(v)}" style="width:${Math.round(v * 100)}%"></i></div>
-        <small>${tr('now')}: ~${mins(p, v)} ${tr('min')}</small></div>`; }).join('')}
-      <div class="box fill"><b>${tr('today_hours')} — ${esc(nm(sel))}</b>
-        <div class="bars">${hrs.map(h => { const v = waitLoad(sel, h, now); return `<div class="b ${h === hr ? 'cur' : ''} ${h === best ? 'best' : ''}"><i class="l${lvl(v)}" style="height:${Math.max(6, Math.round(v * 100))}%"></i><small>${h}</small></div>`; }).join('')}</div>
-        <p>⭐ ${tr('best_time')}: <b>${String(best).padStart(2, '0')}:00</b> (~${mins(sel, waitLoad(sel, best, now))} ${tr('min')})</p></div>
-      <p class="muted small">${tr('wait_note')}</p>`;
-  },
-
-  plan() {
-    const p = st.plan;
-    const r = p.result;
-    return `<div class="badge">${tr('rule_based')}</div>
-      <div class="box form">
-        <label>${tr('city')}<select data-c="pcity">${CITIES.map(c => `<option value="${c.id}" ${c.id === p.city ? 'selected' : ''}>${nm(c)}</option>`).join('')}</select></label>
-        <label>${tr('days')}<select data-c="pdays">${[1, 2, 3].map(n => `<option ${n === p.days ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
-        <label>${tr('budget')}<select data-c="pbudget">${[[0, '¥'], [1, '¥¥'], [2, '¥¥¥']].map(([v, s]) => `<option value="${v}" ${v === p.budget ? 'selected' : ''}>${s}</option>`).join('')}</select></label>
-      </div>
-      <b>${tr('interests')}</b>
-      <div class="chips">${INTERESTS.map(i => `<button class="chip ${p.interests.includes(i) ? 'on' : ''}" data-a="pint" data-v="${i}">${tr('i_' + i)}</button>`).join('')}</div>
-      <button class="btn pri big" data-a="mkplan">🧭 ${tr('create_plan')}</button>
-      ${r ? planHtml(r) : ''}`;
-  },
-
-  fare() {
-    const f = st.fare, a = SPOTS.find(s => s.id === f.from), b = SPOTS.find(s => s.id === f.to);
-    const km = hav(a, b) * 1.25;
-    const train = Math.round((150 + km * 22) / 10) * 10;
-    const taxi = Math.round((500 + Math.max(0, km - 1.1) * 390) / 10) * 10;
-    const opts = id => SPOTS.map(s => `<option value="${s.id}" ${s.id === id ? 'selected' : ''}>${esc(nm(s))}</option>`).join('');
-    return `<div class="box form">
-      <label>${tr('from')}<select data-c="ffrom">${opts(f.from)}</select></label>
-      <label>${tr('to')}<select data-c="fto">${opts(f.to)}</select></label></div>
-      <div class="cards three">
-        <div class="card"><span class="ic">🚃</span><b>${yen(train)}</b><small>${tr('train')} · ~${Math.round(10 + km * 2.5)} ${tr('min')}</small></div>
-        <div class="card"><span class="ic">🚕</span><b>${yen(taxi)}</b><small>${tr('taxi')} · ~${Math.round(5 + km * 3)} ${tr('min')}</small></div>
-        <div class="card"><span class="ic">🚶</span><b>${km.toFixed(1)} km</b><small>${tr('walk')} · ~${Math.round(km * 13)} ${tr('min')}</small></div></div>
-      <a class="btn" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&origin=${a.lat},${a.lng}&destination=${b.lat},${b.lng}&travelmode=transit">🗺 ${tr('open_gmaps')}</a>
-      <p class="muted small">${tr('estimate_note')}</p>`;
-  },
+      <p class="muted small">${tr('tel_hint')} ${tr('verify_num')}</p>${noteConfirm()}`;
+  }
 };
 
 function phraseCard(p) {
@@ -417,7 +334,7 @@ async function runMapSearch(useGoogle) {
     ${GROUPS.food.includes(type) ? `<p class="muted small">${tr('diet_note')}</p>` : ''}
     ${type === 'police' ? `<div class="two"><a class="btn sos" href="tel:110">📞 110</a><button class="btn" data-a="staff" data-v="police">🗣 ${tr('say_phrase')}</button></div>` : ''}
     ${type === 'trash' ? `<button class="btn" data-a="addbin">🗑️ ${tr('add_bin')}</button><p class="muted small">${tr('from_osm')}</p>` : ''}
-    ${sample ? `<p class="muted small">${tr('sample_poi_note')}</p>` : ''}`;
+    ${sample ? `<p class="muted small">${tr('sample_poi_note')}</p>` : ''}${trust(sample ? 'demo' : 'real', 'map')}`;
 }
 
 // ---------- live location ----------
@@ -484,7 +401,7 @@ function sightsNear() {
 }
 
 // ---------- extra views ----------
-VIEWS.nearby = () => `${locBanner()}<div class="box fill small" id="addr">📍 ${st.pos.lat.toFixed(4)}, ${st.pos.lng.toFixed(4)}</div>
+VIEWS.nearby = () => `${trust('real', 'map')}${locBanner()}<div class="box fill small" id="addr">📍 ${st.pos.lat.toFixed(4)}, ${st.pos.lng.toFixed(4)}</div>
   <div id="nearlist" class="nearlist"><small class="muted">${tr('loading')}</small></div>
   <h3>${tr('sights_near')}</h3>${sightsNear()}
   <button class="btn" data-a="addbin">🗑️ ${tr('add_bin')}</button><p class="muted small">${tr('from_osm')}</p>`;
@@ -512,11 +429,11 @@ VIEWS.listen = () => {
     out = `<div class="box"><small class="muted">${tr('heard')}</small><div class="big" lang="ja">${esc(l.text)}</div></div>` +
       (l.matches.length ? l.matches.map(e => `<div class="box fill"><div class="big" lang="ja">${esc(e.ja)}</div><b>→ ${esc(e.n[L()])}</b></div>`).join('') : `<p class="muted">${tr('no_match')}</p>`);
   }
-  return `<div class="badge">${tr('demo')}</div>
+  return `${trust('voice', 'demo')}
     ${SR ? `<button class="btn pri big micbig" data-a="listenmic">🎤 ${tr('tap_speak')}</button>` : `<p class="muted">${tr('listen_nosup')}</p>`}
     <div id="listenout">${out}</div>
     <h3>${tr('cat_answer')}</h3><div class="chips">${PHRASES.filter(p => p.cat === 'answer').map(p => `<button class="chip" data-a="staff" data-v="${p.id}">${esc(pick(p))}</button>`).join('')}</div>
-    <p class="muted small">${tr('listen_note')}</p>`;
+    <p class="muted small">${tr('listen_note')}</p>${noteConfirm()}`;
 };
 const normJa = s => s.replace(/[\s、。，,.!?！？]/g, '');
 function runListen() {
@@ -537,13 +454,16 @@ function runListen() {
 
 VIEWS.tips = () => `<p class="muted">${tr('tips_sub')}</p>${TIPS.map(([ic, tx]) => `<div class="box row tip"><span class="ic">${ic}</span><div>${esc(tx[L()])}</div></div>`).join('')}`;
 
-AFTER.home = () => fillNear(NEAR_HOME, '#nearrows', false);
+AFTER.home = () => { fillNear(NEAR_HOME, '#nearrows', false); fillWeatherHome(); };
 AFTER.nearby = () => {
   fillNear(NEAR_ALL, '#nearlist', true);
   address().then(a => { const el = $('#addr'); if (el && a) el.innerHTML = `📍 ${tr('you_near')}: <b>${esc(a)}</b>`; });
 };
 AFTER.help = () => { if (st.help) { const h = HELP.find(x => x.id === st.help); if (h.poi) fillNear([h.poi], '#helpnear', true); } };
 AFTER.sos = () => { startLocation(); };
+AFTER.plan = () => { loadRates(); fillPlanWeather(); };
+AFTER.fare = () => { fillFare(); };
+AFTER.wait = () => { loadWaitData(); };
 
 VIEWS.profile = () => {
   const p = st.prefs;
@@ -556,7 +476,7 @@ VIEWS.profile = () => {
     <div class="chips">${DIETS.map(d => `<button class="chip ${p.diets.includes(d) ? 'on' : ''}" data-a="ptoggle" data-k="diets" data-v="${d}">${PLACE_TYPES[d].icon} ${tr('c_' + d)}</button>`).join('')}</div>
     ${p.diets.map(d => `<button class="btn" data-a="tomap" data-v="${d}">${PLACE_TYPES[d].icon} ${tr('c_' + d)} · ${tr('map')}</button>`).join('')}
     ${p.diets.includes('hindu') ? `<p class="muted small">${tr('hindu_note')}</p>` : ''}
-    <p class="muted small">${tr('diet_note')}</p><p class="muted small">${tr('saved_auto')}</p>`;
+    <p class="muted small">${tr('diet_note')}</p><p class="muted small">${tr('saved_auto')}</p>${noteConfirm()}`;
 };
 function allergyCard() {
   const keys = st.prefs.allergens;
@@ -639,22 +559,114 @@ function sendChat(text) {
   }, 550);
 }
 
-// ---------- wait times ----------
-const JP_HOLIDAYS = ['1-1', '2-11', '2-23', '4-29', '5-3', '5-4', '5-5', '8-11', '11-3', '11-23'];
-function waitLoad(p, h, d) {
-  const base = PROFILE[p.kind][h] ?? 0;
-  const we = [0, 6].includes(d.getDay()) ? 1.2 : 1;
-  const hol = JP_HOLIDAYS.includes(`${d.getMonth() + 1}-${d.getDate()}`) ? 1.25 : 1;
-  const noise = 0.9 + 0.2 * hash01(p.id + d.toDateString() + h);
-  return Math.min(1, base * we * hol * noise);
+// ---------- trust labels: what is real, what is an estimate, what is demo ----------
+const TRUST_ICON = { real: '●', est: '≈', demo: '🧪', ai: '🤖', ocr: '👁', map: '🗺', voice: '🎤' };
+const trust = (...ks) => `<div class="trusts">${ks.map(k => `<span class="trust t-${k}">${TRUST_ICON[k]} ${tr('tb_' + k)}</span>`).join('')}</div>`;
+const noteConfirm = () => `<p class="muted small note">⚠ ${tr('note_confirm')}</p>`;
+
+// ---------- exchange rates (open.er-api.com, free, no key) ----------
+const rates = { data: store.get('rates', null) };
+async function loadRates() {
+  const d = rates.data;
+  if (d && Date.now() - d.t < 12 * 3600e3) return d;
+  try {
+    const j = await (await fetch('https://open.er-api.com/v6/latest/JPY')).json();
+    if (j.result === 'success') { rates.data = { t: Date.now(), r: j.rates, upd: j.time_last_update_utc }; store.set('rates', rates.data); }
+  } catch { /* offline: keep the old rates */ }
+  return rates.data;
+}
+const toCur = (yenAmt, cur) => { const d = rates.data; return d && d.r[cur] ? yenAmt * d.r[cur] : null; };
+const fromCur = (amt, cur) => { if (cur === 'JPY') return amt; const d = rates.data; return d && d.r[cur] ? amt / d.r[cur] : null; };
+const fmtCur = (v, cur) => `${cur} ${v >= 100 ? Math.round(v).toLocaleString('en-US') : v.toFixed(2)}`;
+const approxMoney = y => { const v = toCur(y, st.prefs.cur || 'NPR'); return v == null ? '' : ` ≈ ${fmtCur(v, st.prefs.cur || 'NPR')}`; };
+
+// ---------- weather (Open-Meteo, free, no key) ----------
+const WX = { 0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️', 45: '🌫️', 48: '🌫️', 51: '🌦️', 53: '🌦️', 55: '🌧️', 56: '🌧️', 57: '🌧️', 61: '🌧️', 63: '🌧️', 65: '🌧️', 71: '🌨️', 73: '🌨️', 75: '❄️', 77: '❄️', 80: '🌦️', 81: '🌧️', 82: '⛈️', 95: '⛈️', 96: '⛈️', 99: '⛈️' };
+const wxIcon = c => WX[c] || '🌡️';
+const wxCache = new Map();
+function weatherAt(lat, lng, days = 3) {
+  const key = `${lat.toFixed(2)},${lng.toFixed(2)},${days}`, c = wxCache.get(key);
+  if (c && Date.now() - c.t < 1800e3) return c.p;
+  const p = fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FTokyo&forecast_days=${days}`)
+    .then(r => r.json()).then(j => { if (!j.daily) { wxCache.delete(key); return null; } return j; }).catch(() => { wxCache.delete(key); return null; });
+  wxCache.set(key, { t: Date.now(), p });
+  return p;
+}
+const dayName = iso => new Date(iso + 'T00:00').toLocaleDateString(st.lang === 'np' ? 'ne-NP' : st.lang === 'en' ? 'en-US' : 'ja-JP', { weekday: 'short' });
+async function fillWeatherHome() {
+  const host = $('#wxhome'); if (!host) return;
+  const j = await weatherAt(st.pos.lat, st.pos.lng, 3);
+  const h = $('#wxhome'); if (!h || !j) return;
+  h.innerHTML = `<div class="row"><b>${wxIcon(j.current.weather_code)} ${Math.round(j.current.temperature_2m)}°C</b><small class="muted">${tr('weather')} · Open-Meteo</small></div>
+    <div class="wxdays">${j.daily.time.map((d, i) => `<div><small>${dayName(d)}</small><span>${wxIcon(j.daily.weather_code[i])}</span><small>${Math.round(j.daily.temperature_2m_max[i])}°/${Math.round(j.daily.temperature_2m_min[i])}°</small><small class="muted">${tr('rain')} ${j.daily.precipitation_probability_max[i]}%</small></div>`).join('')}</div>`;
 }
 
-// ---------- trip planner (rule-based) ----------
-function makePlan() {
-  const p = st.plan;
-  let pool = SPOTS.filter(s => s.city === p.city);
-  const affordable = pool.filter(s => s.cost <= p.budget);
-  if (affordable.length >= 3) pool = affordable;
+// ---------- real routes: Google Routes API (walking and driving; Japan transit data is not available) ----------
+const routeCache = new Map();
+function routeInfo(a, b, mode) {
+  if (!API_KEY || st.gmFail) return Promise.resolve(null);
+  const key = `${mode}:${a.lat},${a.lng}>${b.lat},${b.lng}`;
+  if (!routeCache.has(key)) {
+    routeCache.set(key, fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': API_KEY, 'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters' },
+      body: JSON.stringify({ origin: { location: { latLng: { latitude: a.lat, longitude: a.lng } } }, destination: { location: { latLng: { latitude: b.lat, longitude: b.lng } } }, travelMode: mode }),
+    }).then(r => r.json()).then(j => { const r0 = j.routes && j.routes[0]; return r0 ? { km: r0.distanceMeters / 1000, min: Math.round(parseInt(r0.duration, 10) / 60) } : null; }).catch(() => null));
+  }
+  return routeCache.get(key);
+}
+const trainFare = km => Math.round((150 + km * 22) / 10) * 10;
+const taxiFare = km => Math.round((500 + Math.max(0, km - 1.1) * 390) / 10) * 10;
+
+// ---------- fare view ----------
+VIEWS.fare = () => {
+  const f = st.fare, a = SPOTS.find(s => s.id === f.from), b = SPOTS.find(s => s.id === f.to);
+  const km = hav(a, b) * 1.25;
+  const opts = id => SPOTS.map(s => `<option value="${s.id}" ${s.id === id ? 'selected' : ''}>${esc(nm(s))}</option>`).join('');
+  const cur = st.prefs.cur || 'NPR';
+  return `${trust('est', 'real')}
+    <div class="box form">
+      <label>${tr('from')}<select data-c="ffrom">${opts(f.from)}</select></label>
+      <label>${tr('to')}<select data-c="fto">${opts(f.to)}</select></label></div>
+    <div class="box fare" id="farebox">
+      <div class="row"><span>🚃 <b>${tr('train_est')}</b></span><span><b>${yen(trainFare(km))}</b><small class="muted">${approxMoney(trainFare(km))}</small><br><small>~${Math.round(10 + km * 2.5)} ${tr('min')}</small></span></div>
+      <div class="row"><span>🚕 <b>${tr('taxi_est')}</b></span><span id="taxiout"><b>${yen(taxiFare(km))}</b><small class="muted">${approxMoney(taxiFare(km))}</small><br><small>~${Math.round(5 + km * 3)} ${tr('min')}</small></span></div>
+      <div class="row"><span>🚶 <b>${tr('real_walk')}</b></span><span id="walkout"><small>~${Math.round(km * 13)} ${tr('min')} · ${km.toFixed(1)} km</small></span></div></div>
+    <a class="btn go" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&origin=${a.lat},${a.lng}&destination=${b.lat},${b.lng}&travelmode=transit">${ICON.go}${tr('open_transit')}</a>
+    <p class="muted small">${tr('estimate_note')}</p>
+    <h3>${tr('money')}</h3>
+    <div class="box form">
+      <label>${tr('amount')}<input class="num-in" type="number" inputmode="decimal" min="0" data-c="cvamt" value="${st.cv.amt}"></label>
+      <label>${tr('currency')}<select data-c="cur">${CURRENCIES.map(c => `<option ${c === cur ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
+      <div id="cvout" class="cvout"></div></div>
+    ${noteConfirm()}`;
+};
+Object.assign(S, {
+  amount: ['Amount', 'रकम', '金額', 'きんがく'],
+  currency: ['Currency', 'मुद्रा', '通貨', 'つうか'],
+  food_style: ['Food style', 'खानाको शैली', '食事スタイル', 'しょくじ すたいる'],
+  budget_in: ['Budget currency', 'बजेटको मुद्रा', '予算の通貨', 'よさんの つうか'],
+});
+function renderConverter() {
+  const el = $('#cvout'); if (!el) return;
+  const d = rates.data, cur = st.prefs.cur || 'NPR', amt = +st.cv.amt || 0;
+  if (!d || !d.r[cur]) { el.innerHTML = `<small class="muted">${tr('rate_fail')}</small>`; return; }
+  el.innerHTML = `<div>¥${amt.toLocaleString('en-US')} ≈ <b>${fmtCur(amt * d.r[cur], cur)}</b></div><div>${cur} ${amt.toLocaleString('en-US')} ≈ <b>${yen(amt / d.r[cur])}</b></div>
+    <small class="muted">${tr('rate_note')} ${esc((d.upd || '').slice(0, 16))}</small>`;
+}
+async function fillFare() {
+  const f = st.fare, a = SPOTS.find(s => s.id === f.from), b = SPOTS.find(s => s.id === f.to);
+  loadRates().then(() => { renderConverter(); if (view() === 'fare') { const el = $('#farebox'); if (el) el.querySelectorAll('.muted').length || 0; } });
+  renderConverter();
+  const [walk, drive] = await Promise.all([routeInfo(a, b, 'WALK'), routeInfo(a, b, 'DRIVE')]);
+  if (walk && $('#walkout')) $('#walkout').innerHTML = `<b>${walk.min} ${tr('min')}</b> · ${walk.km.toFixed(1)} km ${trust('real').replace('trusts', 'trusts inl')}`;
+  if (drive && $('#taxiout')) $('#taxiout').innerHTML = `<b>${yen(taxiFare(drive.km))}</b><small class="muted">${approxMoney(taxiFare(drive.km))}</small><br><small>~${drive.min} ${tr('min')} · ${drive.km.toFixed(1)} km (${tr('real_drive')})</small>`;
+}
+
+// ---------- trip plan with money ----------
+const budgetYen = () => { const p = st.plan; if (!p.total) return null; const v = fromCur(+p.total, p.curIn); return v == null ? null : v; };
+function buildDays(pool) {
+  const p = st.plan, ppl = p.people;
   const score = s => s.tags.filter(t => p.interests.includes(t)).length * 3 + s.pop;
   const left = pool.slice().sort((a, b) => score(b) - score(a));
   const per = Math.max(1, Math.min(4, Math.ceil(Math.min(left.length, p.days * 3) / p.days)));
@@ -666,32 +678,282 @@ function makePlan() {
       let bi = 0; left.forEach((s, i) => { if (hav(last, s) < hav(last, left[bi])) bi = i; });
       day.push(left.splice(bi, 1)[0]);
     }
-    let clock = 9 * 60, fare = 0; const rows = [];
+    let clock = 9 * 60, fare = 0, fees = 0; const rows = [];
     day.forEach((s, i) => {
       if (i === 2 || (i === 1 && day.length === 2)) { rows.push({ time: clock, lunch: true }); clock += 60; }
-      const prev = day[i - 1];
-      let trip = null;
-      if (prev) { const km = hav(prev, s) * 1.25; trip = { km, fare: Math.round((150 + km * 22) / 10) * 10, min: Math.round(10 + km * 2.5) }; clock += trip.min; fare += trip.fare; }
+      const prev = day[i - 1]; let trip = null;
+      if (prev) { const km = hav(prev, s) * 1.25; trip = { km, fare: trainFare(km), min: Math.round(10 + km * 2.5) }; clock += trip.min; fare += trip.fare * ppl; }
+      fees += s.fee * ppl;
       rows.push({ time: clock, spot: s, trip });
       clock += s.mins;
     });
-    days.push({ rows, fare, spots: day });
+    days.push({ rows, fare, fees, food: FOOD_PER_DAY[p.budget] * ppl, spots: day });
   }
-  p.result = days;
+  return days;
+}
+function makePlan() {
+  const p = st.plan, limit = budgetYen();
+  let pool = SPOTS.filter(s => s.city === p.city), days = buildDays(pool), trimmed = false;
+  const total = ds => ds.reduce((a, d) => a + d.fees + d.fare + d.food, 0);
+  while (limit != null && total(days) > limit) {
+    const paid = pool.filter(s => s.fee > 0).sort((a, b) => b.fee - a.fee);
+    if (!paid.length) break;
+    pool = pool.filter(s => s !== paid[0]); trimmed = true; days = buildDays(pool);
+  }
+  p.result = { days, trimmed, limit, total: total(days) };
 }
 const hm = m => `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-function planHtml(days) {
+function planHtml(res) {
+  const days = res.days;
   if (!days.length) return `<p class="muted">${tr('nothing')}</p>`;
-  const total = days.reduce((a, d) => a + d.fare, 0);
+  const sum = k => days.reduce((a, d) => a + d[k], 0), line = (label, y) => `<div class="row"><span>${label}</span><span><b>${yen(y)}</b><small class="muted">${approxMoney(y)}</small></span></div>`;
+  const status = res.limit == null ? '' : res.total <= res.limit
+    ? `<div class="okbox">✓ ${tr('within')} (${yen(res.limit)})</div>`
+    : `<div class="warnbox">⚠ ${tr('over')} ${yen(res.total - res.limit)}${approxMoney(res.total - res.limit)}</div>`;
   return days.map((d, i) => {
     const s = d.spots, wp = s.slice(1, -1).map(x => `${x.lat},${x.lng}`).join('|');
     const url = `https://www.google.com/maps/dir/?api=1&origin=${s[0].lat},${s[0].lng}&destination=${s[s.length - 1].lat},${s[s.length - 1].lng}${wp ? '&waypoints=' + encodeURIComponent(wp) : ''}&travelmode=transit`;
-    return `<div class="box day"><b>${st.lang === 'ja' || st.lang === 'hi' ? `${i + 1}${tr('day')}` : `${tr('day')} ${i + 1}`}</b>
+    return `<div class="box day"><div class="row"><b>${st.lang === 'ja' || st.lang === 'hi' ? `${i + 1}${tr('day')}` : `${tr('day')} ${i + 1}`}</b><span class="wxday" data-i="${i}"></span></div>
       ${d.rows.map(r => r.lunch ? `<div class="stop lunch"><time>${hm(r.time)}</time><div>🍜 ${tr('lunch')} <small>${tr('lunch_hint')}</small></div></div>` :
         `${r.trip ? `<div class="leg">🚃 ${yen(r.trip.fare)} · ~${r.trip.min} ${tr('min')}</div>` : ''}
-        <div class="stop"><time>${hm(r.time)}</time><div class="grow">${phSlot(r.spot.id, 'wide')}<b>${esc(nm(r.spot))}</b><small>${r.spot.d[L()]}</small><small>⏱ ${r.spot.mins} ${tr('min')} · ${r.spot.cost === 0 ? 'Free' : '¥'.repeat(r.spot.cost)}</small></div></div>`).join('')}
-      <a class="btn" target="_blank" rel="noopener" href="${url}">🗺 ${tr('show_route')}</a></div>`;
-  }).join('') + `<p class="center"><b>${tr('total_fare')}: ${yen(total)}</b></p><p class="muted small">${tr('estimate_note')}</p>`;
+        <div class="stop"><time>${hm(r.time)}</time><div class="grow">${phSlot(r.spot.id, 'wide')}<b>${esc(nm(r.spot))}</b><small>${r.spot.d[L()]}</small><small>⏱ ${r.spot.mins} ${tr('min')} · ${r.spot.fee ? yen(r.spot.fee) : 'Free'}</small></div></div>`).join('')}
+      <small class="muted">${tr('cost_fees')} ${yen(d.fees)} · ${tr('cost_transit')} ${yen(d.fare)} · ${tr('cost_food')} ${yen(d.food)}</small>
+      <a class="btn go" target="_blank" rel="noopener" href="${url}">${ICON.go}${tr('show_route')}</a></div>`;
+  }).join('') + `<div class="box fill"><b>${tr('cost_total')} · ${st.plan.people} ${tr('people')}</b>
+      ${line(tr('cost_fees'), sum('fees'))}${line(tr('cost_transit'), sum('fare'))}${line(tr('cost_food'), sum('food'))}
+      <div class="row tot"><b>${tr('cost_total')}</b><span><b>${yen(res.total)}</b><small class="muted">${approxMoney(res.total)}</small></span></div>
+      ${status}${res.trimmed ? `<small>${tr('trimmed')}</small>` : ''}
+      <small class="muted">${tr('fee_note')} ${tr('estimate_note')}</small>
+      ${rates.data ? `<small class="muted">${tr('rate_note')} ${esc((rates.data.upd || '').slice(0, 16))}</small>` : ''}</div>${noteConfirm()}`;
+}
+VIEWS.plan = () => {
+  const p = st.plan, cur = st.prefs.cur || 'NPR';
+  return `${trust('est', 'real')}
+    <div class="box form">
+      <label>${tr('city')}<select data-c="pcity">${CITIES.map(c => `<option value="${c.id}" ${c.id === p.city ? 'selected' : ''}>${nm(c)}</option>`).join('')}</select></label>
+      <label>${tr('days')}<select data-c="pdays">${[1, 2, 3].map(n => `<option ${n === p.days ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+      <label>${tr('people')}<select data-c="ppeople">${[1, 2, 3, 4, 5, 6].map(n => `<option ${n === p.people ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+      <label>${tr('food_style')}<select data-c="pbudget">${[[0, '¥'], [1, '¥¥'], [2, '¥¥¥']].map(([v, s]) => `<option value="${v}" ${v === p.budget ? 'selected' : ''}>${s}</option>`).join('')}</select></label>
+      <label>${tr('total_budget').replace('（円）', '').replace(' (¥)', '')}<span class="inl"><input class="num-in" type="number" inputmode="numeric" min="0" step="1000" data-c="ptotal" placeholder="${tr('no_limit')}" value="${p.total || ''}">
+        <select data-c="pcurin">${['JPY', ...CURRENCIES].map(c => `<option ${c === p.curIn ? 'selected' : ''}>${c}</option>`).join('')}</select></span></label>
+      <label>${tr('currency')}<select data-c="cur">${CURRENCIES.map(c => `<option ${c === cur ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
+    </div>
+    <b>${tr('interests')}</b>
+    <div class="chips">${INTERESTS.map(i => `<button class="chip ${p.interests.includes(i) ? 'on' : ''}" data-a="pint" data-v="${i}">${tr('i_' + i)}</button>`).join('')}</div>
+    <button class="btn pri big" data-a="mkplan">🧭 ${tr('create_plan')}</button>
+    ${p.result ? planHtml(p.result) : noteConfirm()}`;
+};
+async function fillPlanWeather() {
+  const p = st.plan; if (!p.result) return;
+  const c = CITIES.find(x => x.id === p.city), j = await weatherAt(c.lat, c.lng, Math.min(16, p.days));
+  if (!j) return;
+  document.querySelectorAll('.wxday').forEach(el => {
+    const i = +el.dataset.i; if (j.daily.time[i] == null) return;
+    el.innerHTML = `${wxIcon(j.daily.weather_code[i])} ${Math.round(j.daily.temperature_2m_max[i])}°/${Math.round(j.daily.temperature_2m_min[i])}° · ${tr('rain')} ${j.daily.precipitation_probability_max[i]}%`;
+  });
+}
+
+// ---------- menu: real on-device OCR (Tesseract.js) + sample demo ----------
+let tessPromise = null;
+function loadTesseract() {
+  if (window.Tesseract) return Promise.resolve();
+  if (!tessPromise) {
+    tessPromise = new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+      s.onload = res; s.onerror = () => { tessPromise = null; rej(new Error('load')); };
+      document.head.appendChild(s);
+    });
+  }
+  return tessPromise;
+}
+function toCanvas(file, max) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); res(c);
+    };
+    img.onerror = rej; img.src = URL.createObjectURL(file);
+  });
+}
+async function runOcr(file) {
+  const m = st.menu; m.items = null; m.ocr = null; m.ocrErr = false; m.ocrBusy = true; m.prog = 0; render();
+  try {
+    await loadTesseract();
+    const canvas = await toCanvas(file, 1600);
+    const { data } = await Tesseract.recognize(canvas, 'jpn', {
+      langPath: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/jpn/4.0.0_best_int',
+      logger: ev => { if (ev.status === 'recognizing text') { m.prog = Math.round(ev.progress * 100); const el = $('#ocrprog'); if (el) el.textContent = m.prog + '%'; } },
+    });
+    m.ocr = analyseMenuText(data.text || '');
+  } catch (err) { console.warn('OCR failed', err); m.ocrErr = true; }
+  m.ocrBusy = false; if (view() === 'menu') render();
+}
+function analyseMenuText(text) {
+  const lines = text.split(/\n+/).map(l => l.trim()).filter(l => l.replace(/\s/g, '').length >= 2);
+  const dishes = [];
+  lines.forEach(line => {
+    const flat = line.replace(/\s+/g, '');
+    const hits = KEYWORDS.filter(k => k.k.some(w => flat.includes(w)));
+    if (!hits.length) return;
+    const main = hits.slice().sort((a, b) => Math.max(...b.k.map(w => flat.includes(w) ? w.length : 0)) - Math.max(...a.k.map(w => flat.includes(w) ? w.length : 0)))[0];
+    const price = (flat.match(/[¥￥]?(\d{3,5})円?/) || [])[1];
+    dishes.push({ line, main, al: [...new Set(hits.flatMap(h => h.al))], price: price ? +price : null });
+  });
+  const flatAll = text.replace(/\s+/g, '');
+  const words = ALLERGENS.filter(a => ALLERGEN_JA[a].some(w => flatAll.includes(w.replace(/（.*）/, ''))));
+  return { lines, dishes, words };
+}
+const gtUrl = text => `https://translate.google.com/?sl=ja&tl=${st.lang === 'np' ? 'ne' : st.lang === 'en' ? 'en' : 'ja'}&text=${encodeURIComponent(text.slice(0, 1500))}&op=translate`;
+function ocrHtml(o) {
+  if (!o.lines.length) return `<p class="muted">${tr('ocr_none')}</p>`;
+  const mine = al => al.filter(a => st.prefs.allergens.includes(a));
+  const nameOf = d => (st.lang === 'ja' || st.lang === 'hi') ? d.main.k[0] : d.main.n[st.lang === 'np' ? 1 : 0];
+  return `${o.words.length ? `<div class="box ${mine(o.words).length ? 'danger' : 'fill'}"><b>${tr('allergen_words')}</b><div>${o.words.map(a => `<span class="al ${st.prefs.allergens.includes(a) ? 'warn' : ''}">${tr('a_' + a)}</span>`).join('')}</div>${mine(o.words).length ? `<div class="alert">⚠ ${tr('your_allergen_here')}</div>` : ''}</div>` : ''}
+    ${o.dishes.length ? `<h3>${tr('ocr_found')}</h3><p class="muted small">${tr('guess_note')}</p>` + o.dishes.map(d => {
+      const bad = mine(d.al);
+      return `<div class="box dish ${bad.length ? 'danger' : ''}">${bad.length ? `<div class="alert">⚠ ${tr('you_allergic')}: ${bad.map(a => tr('a_' + a)).join(', ')}</div>` : ''}
+        <div class="row"><div><div class="big" lang="ja">${esc(d.line)}</div></div>${d.price ? `<b>${yen(d.price)}</b>` : ''}</div><div>→ <b>${esc(nameOf(d))}</b></div>
+        <div>${d.al.length ? `<small>${tr('contains')}:</small> ` + d.al.map(a => `<span class="al ${['pork', 'alcohol'].includes(a) ? 'warn' : ''}">${tr('a_' + a)}</span>`).join('') : ''}</div></div>`;
+    }).join('') : ''}
+    <div class="box"><b>${tr('ocr_raw')}</b><div class="rawtext" lang="ja">${o.lines.map(esc).join('<br>')}</div>
+      <a class="btn go" target="_blank" rel="noopener" href="${gtUrl(o.lines.join('\n'))}">${ICON.go}${tr('translate_g')}</a></div>`;
+}
+VIEWS.menu = () => {
+  const m = st.menu, menu = MENUS[m.idx];
+  const paper = m.img ? `<img class="photo" src="${m.img}" alt="menu photo">` :
+    `<div class="paper">${menu.items.map(id => `<div><span lang="ja">${DISHES[id].ja}</span><i>${yen(DISHES[id].price)}</i></div>`).join('')}</div>`;
+  let items = '';
+  if (m.ocrBusy) items = `<div class="scan"><div class="spin"></div><span>${tr('ocr_run')} <b id="ocrprog">${m.prog || 0}%</b></span></div>`;
+  else if (m.ocrErr) items = `<p class="muted">${tr('ocr_fail')}</p>`;
+  else if (m.ocr) items = ocrHtml(m.ocr);
+  else if (m.scanning) items = `<div class="scan"><div class="spin"></div>${tr('scanning')}</div>`;
+  else if (m.items) {
+    const fl = m.filter;
+    const mine = d => d.al.filter(a => st.prefs.allergens.includes(a));
+    const ok = d => fl === 'all' || (fl === 'safe' && !mine(d).length) || (fl === 'veg' && !d.al.some(a => ['pork', 'beef', 'chicken', 'fish', 'shrimp'].includes(a))) ||
+      (fl === 'halal' && !d.al.some(a => a === 'pork' || a === 'alcohol')) || (fl === 'hindu' && !d.al.includes('beef')) || (fl === 'nopork' && !d.al.includes('pork'));
+    const fchips = (st.prefs.allergens.length ? ['safe'] : []).concat(['all', 'veg', 'halal', 'hindu', 'nopork']);
+    items = `<span class="badge">${tr('demo')}</span><div class="chips">${fchips.map(f => `<button class="chip ${f === fl ? 'on' : ''}" data-a="mfilter" data-v="${f}">${tr('f_' + f)}</button>`).join('')}</div>` +
+      m.items.map(id => DISHES[id]).filter(ok).map(d => {
+        const id = m.items.find(k => DISHES[k] === d), bad = mine(d);
+        const name = st.lang === 'ja' ? d.ja : st.lang === 'hi' ? d.hi : d.n[st.lang === 'np' ? 1 : 0];
+        return `<div class="box dish ${bad.length ? 'danger' : ''}">${bad.length ? `<div class="alert">⚠ ${tr('you_allergic')}: ${bad.map(a => tr('a_' + a)).join(', ')}</div>` : ''}<div class="row"><div><div class="big" lang="ja">${d.ja}</div><small lang="ja">${d.hi}</small></div><b>${yen(d.price)}</b></div>
+          <div>→ <b>${esc(name)}</b></div>
+          <div>${d.al.length ? `<small>${tr('contains')}:</small> ` + d.al.map(a => `<span class="al ${['pork', 'alcohol'].includes(a) ? 'warn' : ''}">${tr('a_' + a)}</span>`).join('') : '<span class="al ok">✓</span>'}</div>
+          <button class="btn" data-a="order" data-v="${id}">🗣 ${tr('order_this')}</button></div>`;
+      }).join('');
+  }
+  return `${trust('ocr')}
+    <div class="menuimg">${paper}</div>
+    <div class="two">
+      <label class="btn pri filebtn">📸 ${tr('take_photo')}<input type="file" accept="image/*" capture="environment" data-c="photo" hidden></label>
+      <button class="btn" data-a="msample">${tr('sample_menu')} (${tr('demo')})</button></div>
+    <a class="chip" href="#/profile">🥜 ${tr('profile')}${st.prefs.allergens.length ? ' (' + st.prefs.allergens.length + ')' : ''}</a>
+    <div id="menuout">${items}</div>
+    <p class="muted small">${tr('menu_note')}</p>${noteConfirm()}`;
+};
+
+// ---------- wait times: crowd estimate from real calendar, season and weather (not live queue counts) ----------
+Object.assign(S, {
+  wait_note: ['Estimated from Japan time, weekday, the national holiday list, season and weather. This is NOT a live queue count.', 'जापानको समय, बार, राष्ट्रिय बिदा, मौसम र ऋतुबाट अनुमान। यो लाइभ लाइन गणना होइन।', '日本時間・曜日・祝日・季節・天気からの推定です。実際の行列の人数ではありません。', 'にほん じかん・ようび・しゅくじつ・きせつ・てんきからの すいてい です。じっさいの ぎょうれつの にんずうでは ありません。'],
+  wait_why: ['Why this estimate', 'यो अनुमान किन', 'この予想の理由', 'この よそうの りゆう'],
+  w_weekend: ['Weekend', 'सप्ताहान्त', '週末', 'しゅうまつ'],
+  w_holiday: ['Holiday', 'बिदा', '祝日', 'しゅくじつ'],
+  w_rain: ['Rain likely: fewer outdoor visitors', 'वर्षा सम्भव: बाहिर कम आगन्तुक', '雨予報：屋外は少なめ', 'あめ よほう：おくがいは すくなめ'],
+  w_newyear: ['New Year: shrines are very busy', 'नयाँ वर्ष: मन्दिरमा धेरै भीड', 'お正月：神社はとても混雑', 'おしょうがつ：じんじゃは とても こんざつ'],
+  w_cherry: ['Cherry blossom season', 'चेरी ब्लसम सिजन', '桜の季節', 'さくらの きせつ'],
+  w_gw: ['Golden Week', 'गोल्डेन वीक', 'ゴールデンウィーク', 'ごーるでん うぃーく'],
+  w_obon: ['Obon holidays', 'ओबोन बिदा', 'お盆', 'おぼん'],
+  w_autumn: ['Autumn leaves season', 'शरद ऋतुका पात', '紅葉の季節', 'こうようの きせつ'],
+  w_hour: ['Busy time of day', 'दिनको व्यस्त समय', '混む時間帯', 'こむ じかんたい'],
+  live_crowd: ['Live crowd: Google Maps (Popular times)', 'लाइभ भीड: गुगल म्याप (Popular times)', 'リアルタイムの混雑：Googleマップ', 'りあるたいむの こんざつ：ぐーぐる まっぷ'],
+  official_site: ['Airport official site', 'एयरपोर्टको आधिकारिक साइट', '空港の公式サイト', 'くうこうの こうしき さいと'],
+  vjw_tip: ['Tip: register on Visit Japan Web before you land to speed up immigration and customs.', 'सुझाव: अवतरण अघि Visit Japan Web मा दर्ता गर्नुहोस्, इमिग्रेसन र भन्सार छिटो हुन्छ।', 'ヒント：到着前にVisit Japan Webで登録すると入国審査と税関が早くなります。', 'ひんと：とうちゃくまえに Visit Japan Webで とうろく すると にゅうこくしんさと ぜいかんが はやく なります。'],
+  japan_time: ['Japan time', 'जापानको समय', '日本時間', 'にほん じかん'],
+});
+const WAIT_GEO = {
+  ntr1: { lat: 35.7647, lng: 140.3864, site: 'https://www.narita-airport.jp/en/' }, hnd: { lat: 35.5494, lng: 139.7798, site: 'https://tokyo-haneda.com/en/' },
+  kix: { lat: 34.432, lng: 135.2304, site: 'https://www.kansai-airport.or.jp/en/' }, fuk: { lat: 33.5859, lng: 130.4507, site: 'https://www.fukuoka-airport.jp/en/' },
+  cts: { lat: 42.7752, lng: 141.6923, site: 'https://www.new-chitose-airport.jp/en/' },
+  w_senso: { lat: 35.7148, lng: 139.7967, shrine: true }, w_fushimi: { lat: 34.9671, lng: 135.7727, shrine: true, kyoto: true }, w_kinkaku: { lat: 35.0394, lng: 135.7292, kyoto: true },
+  w_shibuya: { lat: 35.6585, lng: 139.7013 }, w_skytree: { lat: 35.7101, lng: 139.8107 },
+};
+WAIT_PLACES.forEach(p => Object.assign(p, WAIT_GEO[p.id]));
+
+// Japan time, regardless of the phone's time zone
+function tokyoNow() {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23', weekday: 'short' }).formatToParts(new Date()).map(x => [x.type, x.value]));
+  return { y: +parts.year, m: +parts.month, d: +parts.day, h: +parts.hour, dow: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(parts.weekday), iso: `${parts.year}-${parts.month}-${parts.day}` };
+}
+// official national holidays (holidays-jp.github.io, free): cached for a day
+async function loadHolidays() {
+  const c = store.get('holidays', null);
+  if (c && Date.now() - c.t < 86400e3) { st.holidays = c.d; return; }
+  try {
+    const d = await (await fetch('https://holidays-jp.github.io/api/v1/date.json')).json();
+    st.holidays = d; store.set('holidays', { t: Date.now(), d });
+  } catch { st.holidays = c ? c.d : null; }
+}
+function seasonOf(p, T) {
+  const md = T.m * 100 + T.d, air = p.kind === 'air';
+  if (md >= 1229 || md <= 103) return { key: 'newyear', f: air ? 1.25 : p.shrine ? 1.6 : 1.2 };
+  if (md >= 325 && md <= 410) return { key: 'cherry', f: air ? 1.1 : 1.3 };
+  if (md >= 429 && md <= 506) return { key: 'gw', f: 1.25 };
+  if (md >= 811 && md <= 816) return { key: 'obon', f: 1.15 };
+  if (md >= 1110 && md <= 1205 && p.kyoto) return { key: 'autumn', f: 1.3 };
+  return null;
+}
+function waitFactors(p, T) {
+  const why = []; let f = 1;
+  if (T.dow === 0 || T.dow === 6) { f *= p.kind === 'air' ? 1.1 : 1.2; why.push(['weekend', tr('w_weekend')]); }
+  const hol = st.holidays && st.holidays[T.iso];
+  if (hol) { f *= p.kind === 'air' ? 1.15 : 1.25; why.push(['holiday', `${tr('w_holiday')}: ${hol}`]); }
+  const se = seasonOf(p, T);
+  if (se) { f *= se.f; why.push([se.key, tr('w_' + se.key)]); }
+  const rain = st.wxp && st.wxp[p.id];
+  if (p.kind === 'sight' && rain >= 70) { f *= 0.8; why.push(['rain', `${tr('w_rain')} (${rain}%)`]); }
+  return { f, why };
+}
+// airports differ in size, so they should not all show the same level at the same time
+const WAIT_SCALE = { ntr1: 0.8, hnd: 0.7, kix: 0.8, fuk: 0.5, cts: 0.45 };
+const waitLoad = (p, h, T) => Math.min(1, (PROFILE[p.kind][h] ?? 0) * (WAIT_SCALE[p.id] ?? 1) * waitFactors(p, T).f);
+
+VIEWS.wait = () => {
+  const w = st.wait, T = tokyoNow(), hr = T.h;
+  const list = WAIT_PLACES.filter(p => p.group === w.group);
+  const sel = WAIT_PLACES.find(p => p.id === w.sel) || list[0];
+  const lvl = v => (v < .3 ? 0 : v < .6 ? 1 : v < .8 ? 2 : 3);
+  const mins = (p, v) => Math.max(0, Math.round(v * p.max / 5) * 5);
+  const hrs = []; for (let h = (sel.kind === 'air' ? 6 : 8); h <= (sel.kind === 'air' ? 23 : 19); h++) hrs.push(h);
+  const best = hrs.reduce((a, h) => (waitLoad(sel, h, T) < waitLoad(sel, a, T) ? h : a), hrs[0]);
+  const fx = waitFactors(sel, T);
+  return `${trust('est')}
+    <small class="muted">${tr('japan_time')}: ${String(hr).padStart(2, '0')}:00 · ${T.iso}</small>
+    <div class="chips">${['air', 'sight'].map(g => `<button class="chip ${g === w.group ? 'on' : ''}" data-a="wgroup" data-v="${g}">${g === 'air' ? '✈️' : '⛩'} ${tr(g === 'air' ? 'airports' : 'sights')}</button>`).join('')}</div>
+    ${w.group === 'air' ? `<div class="box fill"><small>💡 ${tr('vjw_tip')}</small><a class="btn" target="_blank" rel="noopener" href="https://vjw-lp.digital.go.jp/en/">Visit Japan Web ▸</a></div>` : ''}
+    ${list.map(p => { const v = waitLoad(p, hr, T); return `<div class="box wait ${p.id === sel.id ? 'sel' : ''}" data-a="wsel" data-v="${p.id}">
+      <div class="row"><b>${esc(nm(p))}</b><span class="lv l${lvl(v)}">${tr('lvl' + lvl(v))}</span></div>
+      <div class="meter"><i class="l${lvl(v)}" style="width:${Math.round(v * 100)}%"></i></div>
+      <small>${tr('now')}: ${p.kind === 'air' ? `~${mins(p, v)} ${tr('min')}` : `${tr('lvl' + lvl(v))}`}</small></div>`; }).join('')}
+    <div class="box fill"><b>${tr('today_hours')} — ${esc(nm(sel))}</b>
+      <div class="bars">${hrs.map(h => { const v = waitLoad(sel, h, T); return `<div class="b ${h === hr ? 'cur' : ''} ${h === best ? 'best' : ''}"><i class="l${lvl(v)}" style="height:${Math.max(6, Math.round(v * 100))}%"></i><small>${h}</small></div>`; }).join('')}</div>
+      <p>⭐ ${tr('best_time')}: <b>${String(best).padStart(2, '0')}:00</b>${sel.kind === 'air' ? ` (~${mins(sel, waitLoad(sel, best, T))} ${tr('min')})` : ''}</p>
+      <b class="small">${tr('wait_why')}</b>
+      <div class="chips">${[['hour', tr('w_hour')], ...fx.why].map(([k, t]) => `<span class="chip why">${esc(t)}</span>`).join('')}</div>
+      ${sel.site ? `<a class="btn" target="_blank" rel="noopener" href="${sel.site}">${tr('official_site')} ▸</a>` : ''}
+      <a class="btn go" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(sel.en)}">${ICON.go}${tr('live_crowd')}</a></div>
+    <p class="muted small">${tr('wait_note')}</p>${noteConfirm()}`;
+};
+async function loadWaitData() {
+  const key = st.wait.group;
+  if (st.waitLoaded && st.waitLoaded[key]) return;
+  (st.waitLoaded = st.waitLoaded || {})[key] = true;
+  st.wxp = st.wxp || {};
+  await Promise.all([loadHolidays(), ...WAIT_PLACES.filter(p => p.group === key).map(p => weatherAt(p.lat, p.lng, 1).then(j => { if (j) st.wxp[p.id] = j.daily.precipitation_probability_max[0]; }))]);
+  if (view() === 'wait') render();
 }
 
 // ---------- photos (Wikimedia Commons, free licences, cached on the device) ----------
@@ -783,7 +1045,7 @@ document.addEventListener('click', e => {
       r.onresult = ev => { $('#chatin').value = ev.results[0][0].transcript; };
       el.textContent = '…'; r.onend = () => { el.textContent = '🎤'; }; r.start();
     },
-    msample() { const m = st.menu; const next = m.items ? (m.idx + 1) % MENUS.length : 0; m.img = null; startScan(next); },
+    msample() { const m = st.menu; const next = m.items ? (m.idx + 1) % MENUS.length : 0; m.img = null; m.ocr = null; m.ocrErr = false; startScan(next); },
     mfilter() { st.menu.filter = v; render(); },
     order() {
       const d = DISHES[v];
@@ -792,7 +1054,7 @@ document.addEventListener('click', e => {
     wgroup() { st.wait.group = v; st.wait.sel = WAIT_PLACES.find(p => p.group === v).id; render(); },
     wsel() { st.wait.sel = v; render(); },
     pint() { const i = st.plan.interests; const k = i.indexOf(v); k < 0 ? i.push(v) : i.splice(k, 1); render(); },
-    mkplan() { makePlan(); render(); },
+    async mkplan() { await loadRates(); makePlan(); render(); },
   };
   A[a]?.();
 });
@@ -804,16 +1066,21 @@ document.addEventListener('change', e => {
     pcity() { st.plan.city = v; st.plan.result = null; render(); },
     pdays() { st.plan.days = +v; render(); },
     pbudget() { st.plan.budget = +v; render(); },
+    ppeople() { st.plan.people = +v; render(); },
+    ptotal() { st.plan.total = Math.max(0, +v || 0); render(); },
+    pcurin() { st.plan.curIn = v; render(); },
+    cur() { st.prefs.cur = v; store.set('prefs', st.prefs); render(); },
     ffrom() { st.fare.from = v; render(); },
     fto() { st.fare.to = v; render(); },
     photo() {
       const f = e.target.files[0]; if (!f) return;
-      st.menu.img = URL.createObjectURL(f); startScan(f.size % MENUS.length);
+      st.menu.img = URL.createObjectURL(f); runOcr(f);
     },
   };
   C[c]?.();
 });
 document.addEventListener('input', e => {
+  if (e.target.dataset.c === 'cvamt') { st.cv.amt = e.target.value; renderConverter(); return; }
   if (e.target.dataset.c === 'q') {
     st.q = e.target.value; const pos = e.target.selectionStart; render();
     const i = $('.search'); i.focus(); i.setSelectionRange(pos, pos);

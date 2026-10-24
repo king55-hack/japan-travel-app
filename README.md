@@ -26,3 +26,20 @@ Without a key the map shows sample locations. `wireframe.html` holds the screen 
 
 No real AI is used: chat, menu, wait times and plans are rule-based demos.
 Google key needs "Maps JavaScript API" and "Places API (New)"; "Geocoding API" is optional (address text).
+
+## What is real and what is an estimate
+| Feature | Status |
+|---|---|
+| Nearby places (police, hospital, pharmacy, charging, rental, lockers, diet shops) | Real: Google Places (New) |
+| Trash bins | Real: OpenStreetMap + traveller pins (stored on the device only) |
+| Weather | Real: Open-Meteo |
+| Exchange rates and money converter | Real: open.er-api.com (mid-market rate) |
+| Walking time and road distance | Real: Google Routes API |
+| Train fare and time | Estimate from distance (Google does not return Japan transit routes) |
+| Taxi fare | Estimate from real road distance |
+| Menu photo | On-device OCR (Tesseract.js), small word list, can misread |
+| Listen | Browser speech recognition, small meaning list |
+| Wait times | Estimate from Japan time, official holiday list, season and weather. Not a live queue count |
+| AI Guide, trip plan | Rule based demo |
+
+Every screen shows a label for this and a reminder to confirm important things with staff or official sources.

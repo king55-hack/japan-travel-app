@@ -1,6 +1,6 @@
 // Offline shell: network first, fall back to cache (so phrases and SOS work without internet)
-const CACHE = 'jt-v13';
-const SHELL = ['./', 'index.html', 'config.js', 'css/style.css?v=13', 'js/data.js?v=13', 'js/data2.js?v=13', 'js/data3.js?v=13', 'js/app.js?v=13', 'manifest.webmanifest', 'logo.png', 'favicon.png', 'icon-192.png'];
+const CACHE = 'jt-v16';
+const SHELL = ['./', 'index.html', 'config.js', 'css/style.css?v=16', 'js/data.js?v=16', 'js/data2.js?v=16', 'js/data3.js?v=16', 'js/data4.js?v=16', 'js/app.js?v=16', 'manifest.webmanifest', 'logo.png', 'favicon.png', 'icon-192.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => Promise.all(SHELL.map(u => c.add(u).catch(() => { })))).then(() => self.skipWaiting()));

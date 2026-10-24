@@ -192,3 +192,27 @@ select{border:1.5px solid var(--line);border-radius:8px;padding:6px;font:inherit
 .stop .grow{display:block}
 .nslot:empty{display:none}.nslot .nrow{border-top:1px solid var(--line)}
 .logo{display:flex;align-items:center;gap:8px}.logoimg{border-radius:50%;display:block}.heroimg{align-self:center;border-radius:50%;box-shadow:0 8px 24px #0003}
+/* v14: trust labels, money, weather */
+.trusts{display:flex;flex-wrap:wrap;gap:6px}
+.trusts.inl{display:inline-flex;margin-left:6px}
+.trust{font-size:11px;font-weight:700;border-radius:10px;padding:2px 9px;border:1px solid}
+.t-real{background:#e3f4e4;color:#1b5e20;border-color:#9fd3a3}
+.t-est,.t-ocr,.t-voice{background:#fff3cd;color:#6b5000;border-color:#e6c962}
+.t-demo,.t-ai,.t-map{background:#e8eaf6;color:#283593;border-color:#aab1e0}
+.dark .t-real{background:#1d3a20;color:#9fe0a4}.dark .t-est,.dark .t-ocr,.dark .t-voice{background:#4a3d12;color:#f1d98a}.dark .t-demo,.dark .t-ai,.dark .t-map{background:#262a52;color:#b4bbf0}
+.note{border-left:3px solid #e6c962;padding-left:8px}
+.wx{gap:6px}.wxdays{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center}
+.wxdays div{display:flex;flex-direction:column;background:var(--fill);border-radius:8px;padding:4px}.wxdays span{font-size:22px}
+.wxday{font-size:12px;color:var(--mute)}
+.okbox{background:#e3f4e4;color:#1b5e20;border-radius:8px;padding:6px 8px;font-weight:700}
+.warnbox{background:#fde2c8;color:#8a4b00;border-radius:8px;padding:6px 8px;font-weight:700}
+.dark .okbox{background:#1d3a20;color:#9fe0a4}.dark .warnbox{background:#4a2c10;color:#f5c690}
+.num-in{border:1.5px solid var(--line);border-radius:8px;padding:6px;font:inherit;width:110px;background:var(--card);color:var(--ink)}
+.inl{display:inline-flex;gap:6px;align-items:center}
+.cvout{display:flex;flex-direction:column;gap:2px}
+.rawtext{font-size:13px;line-height:1.7;max-height:160px;overflow:auto;background:var(--fill);border-radius:8px;padding:6px}
+.fare .row{align-items:flex-start;border-top:1px solid var(--line);padding-top:6px}.fare .row:first-child{border-top:0;padding-top:0}
+.fare .row>span:last-child{text-align:right}
+.tot{border-top:1px solid var(--line);padding-top:6px}
+.chip.why{border-style:dashed;font-size:12px;cursor:default}
+.box .row small.muted{display:block}
