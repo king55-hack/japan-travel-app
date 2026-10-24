@@ -53,6 +53,7 @@ function hav(a, b) {
 }
 const fmtDist = km => (km < 1 ? `${Math.round(km * 100) * 10} m` : `${km.toFixed(1)} km`);
 const walkMin = km => Math.max(1, Math.round(km * 13));
+const walkLabel = km => `${fmtDist(km)} · 🚶 ${walkMin(km)} ${tr('min')}`;
 const yen = n => '¥' + Math.round(n).toLocaleString('en-US');
 const dirUrl = (p, mode = 'walking') => `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}&travelmode=${mode}`;
 function hash01(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return ((h >>> 0) % 10000) / 10000; }
@@ -108,7 +109,7 @@ function renderOverlay() {
   if (!o) { el.className = ''; el.innerHTML = ''; return; }
   el.className = 'on';
   el.innerHTML = `<div class="ov-in">
-    <div class="ov-hint">${esc(tr('show_staff_hint'))} / よんでください</div>
+    <div class="ov-hint">${esc(tr('show_staff_hint'))}${st.lang === 'ja' || st.lang === 'hi' ? '' : ' / よんでください'}</div>
     <div class="ov-hi" lang="ja">${esc(o.hi)}</div>
     <div class="ov-ja" lang="ja">${esc(o.ja)}</div>
     <div class="ov-src">${esc(o.src || '')}</div>
@@ -173,10 +174,10 @@ const VIEWS = {
 
   chat() {
     if (!st.chat.length) st.chat.push({ me: false, k: 'chat_hello' });
-    const quick = ['⛩ Senso-ji', '🚓 Police?', '🚻 Toilet?', '🍜 Food?', '🚃 Train?', '⏱ Wait?'];
+    const quick = [['⛩', 'sensoji', 'Senso-ji'], ['🚓', 'police', 'police'], ['🚻', 'toilet', 'toilet'], ['🍜', 'food', 'food'], ['🚃', 'train', 'train'], ['⏱', 'wait', 'wait']];
     return `<div class="chathead"><div class="avatar">🗾</div><div><b>${tr('ai')}</b></div></div>${trust('ai', 'demo')}
       <div id="msgs" class="msgs">${st.chat.map(chatBubble).join('')}</div>
-      <div class="chips quick">${quick.map(q => `<button class="chip" data-a="quick" data-v="${esc(q.split(' ').slice(1).join(' '))}">${q}</button>`).join('')}</div>
+      <div class="chips quick">${quick.map(([ic, k, q]) => `<button class="chip" data-a="quick" data-v="${q}">${ic} ${tr('q_' + k)}</button>`).join('')}</div>
       <form class="chatform" data-f="chat"><input id="chatin" autocomplete="off" placeholder="${tr('ask_ph')}">
         ${('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) ? `<button type="button" class="btn" data-a="mic">🎤</button>` : ''}
         <button class="btn pri">${tr('send')}</button></form>`;
@@ -188,7 +189,7 @@ const VIEWS = {
       <div class="two">${EMERGENCY.slice(0, 2).map(e => `<a class="btn sos" href="tel:${e.tel}"><small>${tr(e.k)}</small><b class="num">${e.num}</b></a>`).join('')}</div>
       ${EMERGENCY.slice(2).map(e => `<a class="row box" href="tel:${e.tel}"><span>${tr(e.k)}</span><b>${e.num}</b></a>`).join('')}
       <div class="box fill"><b>📍 ${tr('nearest_police')}</b>
-        <div>${esc(nm(p))} · ${fmtDist(p.km)} · ${walkMin(p.km)} ${tr('walk_min')}</div>
+        <div>${esc(nm(p))}</div><div class="small muted">${walkLabel(p.km)}</div>
         <div class="two"><a class="btn" href="${dirUrl(p)}" target="_blank" rel="noopener">${tr('go')} ▶</a><a class="btn" href="#/map">🗺 ${tr('map')}</a></div></div>
       <div class="two"><button class="btn pri" data-a="myloc">📱 ${tr('tell_loc')}</button><button class="btn" data-a="staff" data-v="help">🗣 ${tr('say_phrase')}</button></div>
       <p class="muted small">${tr('tel_hint')} ${tr('verify_num')}</p>${noteConfirm()}`;
@@ -329,7 +330,7 @@ async function runMapSearch(useGoogle) {
   $('#sheet').innerHTML = `<div class="grab"></div><div class="row"><b>${PLACE_TYPES[type].icon} ${type === 'police' ? tr('nearest_police') : tr('c_' + type)}</b>
       <button class="chip" data-a="recenter">📍 ${tr('recenter')}</button></div>
     ${st.pos.real ? '' : `<p class="muted small">${tr('using_sample')} <button class="chip" data-a="allowloc">${tr('allow_loc')}</button></p>`}
-    ${list.length ? list.map((p, i) => `<div class="box row poi" id="poi-${i}"><div><b>${esc(pname(p, type))}</b><div class="small muted">${fmtDist(p.km)} · ${walkMin(p.km)} ${tr('walk_min')}${p.sub ? ' · ' + esc(p.sub) : ''}</div></div>
+    ${list.length ? list.map((p, i) => `<div class="box row poi" id="poi-${i}"><div class="ninfo"><b class="nm2">${esc(pname(p, type))}</b><div class="small muted">${walkLabel(p.km)}</div>${p.sub ? `<div class="small muted nm1">${esc(p.sub)}</div>` : ''}</div>
       <div class="nbtns">${p.pin ? `<button class="btn ico del" data-a="delbin" data-v="${p.pin}" aria-label="${tr('delete')}" title="${tr('delete')}">${ICON.trash}</button>` : ''}<a class="btn go" target="_blank" rel="noopener" href="${dirUrl(p)}">${ICON.go}${tr('go')}</a></div></div>`).join('') : `<p class="muted">${tr('nothing')}</p>`}
     ${GROUPS.food.includes(type) ? `<p class="muted small">${tr('diet_note')}</p>` : ''}
     ${type === 'police' ? `<div class="two"><a class="btn sos" href="tel:110">📞 110</a><button class="btn" data-a="staff" data-v="police">🗣 ${tr('say_phrase')}</button></div>` : ''}
@@ -383,7 +384,7 @@ const NEAR_HOME = ['police', 'hospital', 'shop', 'toilet', 'trash'];
 const NEAR_ALL = ['police', 'hospital', 'pharmacy', 'shop', 'toilet', 'atm', 'trash', 'charge', 'rental', 'locker'];
 const nearStrip = () => `<div class="box near"><div class="row"><b>📍 ${tr('near_you')}</b><a class="more" href="#/nearby">${tr('see_all')} ›</a></div>${locBanner()}<div id="nearrows" class="nearrows"><small class="muted">${tr('loading')}</small></div></div>`;
 function nearRow(type, p, big) {
-  return `<div class="nrow ${big ? 'box' : ''}"><div><b>${PLACE_TYPES[type].icon} ${tr('c_' + type)}</b><div class="small">${esc(pname(p, type))} · <span class="muted">${fmtDist(p.km)} · ${walkMin(p.km)} ${tr('walk_min')}</span></div></div>
+  return `<div class="nrow ${big ? 'box' : ''}"><div class="ninfo"><b>${PLACE_TYPES[type].icon} ${tr('c_' + type)}</b><div class="small nm2">${esc(pname(p, type))}</div><div class="small muted">${walkLabel(p.km)}</div></div>
     <div class="nbtns">${p.pin ? `<button class="btn ico del" data-a="delbin" data-v="${p.pin}" aria-label="${tr('delete')}">${ICON.trash}</button>` : ''}<a class="btn go" target="_blank" rel="noopener" href="${dirUrl(p)}">${ICON.go}${tr('go')}</a><button class="btn ico" data-a="tomap" data-v="${type}" aria-label="${tr('map_btn')}" title="${tr('map_btn')}">${ICON.pin}</button></div></div>`;
 }
 async function fillNear(types, hostSel, big) {
@@ -716,7 +717,7 @@ function planHtml(res) {
     return `<div class="box day"><div class="row"><b>${st.lang === 'ja' || st.lang === 'hi' ? `${i + 1}${tr('day')}` : `${tr('day')} ${i + 1}`}</b><span class="wxday" data-i="${i}"></span></div>
       ${d.rows.map(r => r.lunch ? `<div class="stop lunch"><time>${hm(r.time)}</time><div>🍜 ${tr('lunch')} <small>${tr('lunch_hint')}</small></div></div>` :
         `${r.trip ? `<div class="leg">🚃 ${yen(r.trip.fare)} · ~${r.trip.min} ${tr('min')}</div>` : ''}
-        <div class="stop"><time>${hm(r.time)}</time><div class="grow">${phSlot(r.spot.id, 'wide')}<b>${esc(nm(r.spot))}</b><small>${r.spot.d[L()]}</small><small>⏱ ${r.spot.mins} ${tr('min')} · ${r.spot.fee ? yen(r.spot.fee) : 'Free'}</small></div></div>`).join('')}
+        <div class="stop"><time>${hm(r.time)}</time><div class="grow">${phSlot(r.spot.id, 'wide')}<b>${esc(nm(r.spot))}</b><small>${r.spot.d[L()]}</small><small>⏱ ${r.spot.mins} ${tr('min')} · ${r.spot.fee ? yen(r.spot.fee) : tr('free')}</small></div></div>`).join('')}
       <small class="muted">${tr('cost_fees')} ${yen(d.fees)} · ${tr('cost_transit')} ${yen(d.fare)} · ${tr('cost_food')} ${yen(d.food)}</small>
       <a class="btn go" target="_blank" rel="noopener" href="${url}">${ICON.go}${tr('show_route')}</a></div>`;
   }).join('') + `<div class="box fill"><b>${tr('cost_total')} · ${st.plan.people} ${tr('people')}</b>

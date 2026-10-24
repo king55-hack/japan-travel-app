@@ -216,3 +216,14 @@ select{border:1.5px solid var(--line);border-radius:8px;padding:6px;font:inherit
 .tot{border-top:1px solid var(--line);padding-top:6px}
 .chip.why{border-style:dashed;font-size:12px;cursor:default}
 .box .row small.muted{display:block}
+.view>*{flex-shrink:0}
+/* v17: layout polish */
+.logo{min-width:0;font-size:15px;line-height:1.15}
+.top{gap:6px}
+.langsel{max-width:92px}
+.ninfo{flex:1;min-width:0}
+.nm2,.nm1{display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;-webkit-line-clamp:2;overflow-wrap:anywhere}
+.nm1{-webkit-line-clamp:1}
+.nrow .nbtns .btn.go{padding:0 10px}
+.paper{-webkit-mask-image:linear-gradient(#000 65%,transparent);mask-image:linear-gradient(#000 65%,transparent)}
+.tile b{font-size:12px}.phslot figcaption{font-size:10px}.bars .b small{font-size:10px}
