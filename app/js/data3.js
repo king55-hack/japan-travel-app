@@ -88,3 +88,16 @@ MENUS[1].items.push('soba', 'gyudon');
 PHRASES.push({ id: 'nobeef', cat: 'food', en: 'I cannot eat beef', np: 'म गाईको मासु खान सक्दिनँ', ja: '牛肉は食べられません', hi: 'ぎゅうにくは たべられません', ro: 'gyuuniku wa taberaremasen' });
 
 const FEATURES = [['help', 'help_btn'], ['map', 'map'], ['phrases', 'phrases'], ['chat', 'ai'], ['sos', 'sos'], ['menu', 'menu'], ['profile', 'profile'], ['listen', 'listen'], ['wait', 'wait'], ['plan', 'plan'], ['fare', 'fare'], ['tips', 'tips'], ['nearby', 'near_you']];
+
+// Wikipedia article titles used to look up a free (Wikimedia Commons) photo for each sight
+const WIKI = {
+  sensoji: 'Sensō-ji', meiji: 'Meiji Shrine', shibuya: 'Shibuya Crossing', tsukiji: 'Tsukiji fish market', ueno: 'Ueno Park', akiba: 'Akihabara', skytree: 'Tokyo Skytree',
+  fushimi: 'Fushimi Inari-taisha', kinkaku: 'Kinkaku-ji', kiyomizu: 'Kiyomizu-dera', arashiyama: 'Sagano Bamboo Forest', nishiki: 'Nishiki Market',
+  osakajo: 'Osaka Castle', dotonbori: 'Dōtonbori', kuromon: 'Kuromon Ichiba',
+};
+SPOTS.forEach(s => { s.wiki = WIKI[s.id]; });
+Object.assign(S, {
+  credits: ['Photo credits', 'फोटो श्रेय', '写真のクレジット', 'しゃしんの くれじっと'],
+  photos_note: ['Photos come from Wikimedia Commons and keep their own licenses.', 'फोटोहरू विकिमिडिया कमन्सबाट हुन् र आ-आफ्नो लाइसेन्समा छन्।', '写真はWikimedia Commonsのもので、それぞれのライセンスに従います。', 'しゃしんは Wikimedia Commonsの もので、それぞれの らいせんすに したがいます。'],
+  sights_pop: ['Popular sights', 'लोकप्रिय पर्यटन स्थल', '人気の観光地', 'にんきの かんこうち'],
+});

@@ -174,3 +174,20 @@ select{border:1.5px solid var(--line);border-radius:8px;padding:6px;font:inherit
 .mapnav .mapchips{border-bottom:0}
 .box.danger{border-color:var(--red);background:#fdeaec}
 .alert{color:var(--red);font-weight:700;font-size:13px}
+/* photos (Wikimedia Commons) */
+.phslot{margin:0;position:relative;border-radius:10px;overflow:hidden;background:var(--fill)}
+.phslot:empty{display:none}
+.phslot img{display:block;width:100%;height:100%;object-fit:cover}
+.phslot.wide{aspect-ratio:16/9;margin:6px 0}
+.phslot.card{aspect-ratio:4/3}
+.phslot.thumb{width:84px;flex:none;aspect-ratio:1}
+.phslot figcaption{position:absolute;left:0;right:0;bottom:0;padding:2px 6px;background:#000a;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.phslot figcaption a{color:#fff}
+.hscroll{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;scroll-snap-type:x proximity}
+.scard{flex:none;width:150px;display:flex;flex-direction:column;gap:2px;cursor:pointer;scroll-snap-align:start}
+.scard .phslot{width:150px}
+.scard:not(:has(.phslot img)) .phslot{display:block;aspect-ratio:4/3}
+.scard small{color:var(--mute)}
+.sightrow{align-items:center;gap:10px}.grow{flex:1;min-width:0}
+.stop .grow{display:block}
+.nslot:empty{display:none}.nslot .nrow{border-top:1px solid var(--line)}

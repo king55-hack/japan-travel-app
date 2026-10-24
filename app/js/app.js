@@ -81,7 +81,7 @@ const go = v => { location.hash = '#/' + v; };
 function render() {
   const v = view();
   document.documentElement.lang = st.lang === 'np' ? 'ne' : st.lang === 'en' ? 'en' : 'ja';
-  const heads = { home: '', map: 'map', phrases: 'phrases', chat: 'ai', sos: 'emergency', menu: 'menu', wait: 'wait', plan: 'plan', fare: 'fare', help: 'help_btn', nearby: 'near_you', listen: 'listen', tips: 'tips', profile: 'profile' };
+  const heads = { home: '', map: 'map', phrases: 'phrases', chat: 'ai', sos: 'emergency', menu: 'menu', wait: 'wait', plan: 'plan', fare: 'fare', help: 'help_btn', nearby: 'near_you', listen: 'listen', tips: 'tips', profile: 'profile', credits: 'credits' };
   let html = '';
   if (v !== 'lang') {
     html += `<header class="top">
@@ -98,6 +98,7 @@ function render() {
   }
   $('#app').innerHTML = html;
   (AFTER[v] || (() => {}))();
+  hydratePhotos();
   renderOverlay();
 }
 
@@ -140,10 +141,12 @@ const VIEWS = {
       <div class="tiles">${tile('#/phrases', '💬', tr('phrases'))}${tile('#/listen', '🎧', tr('listen'))}${tile('#/menu', '📷', tr('menu'))}${tile('#/profile', '🥜', tr('profile'))}</div>
       <h3>${tr('sec_plan')}</h3>
       <div class="tiles">${tile('#/plan', '🧭', tr('plan'))}${tile('#/fare', '🚃', tr('fare'))}${tile('#/wait', '⏱️', tr('wait'))}${tile('#/tips', '💡', tr('tips'))}</div>
+      <h3>${tr('sights_pop')}</h3>
+      <div class="hscroll">${SPOTS.filter(s => s.pop >= 4).slice(0, 8).map(s => `<div class="scard" data-a="askspot" data-v="${s.id}">${phSlot(s.id, 'card')}<b>${esc(nm(s))}</b><small>${esc(nm(CITIES.find(c => c.id === s.city)))}</small></div>`).join('')}</div>
       <div class="hello" data-a="nav" data-v="chat"><div class="avatar">🗾</div><div><b>${tr('greet_home')}</b><div class="badge">${tr('demo_ai')}</div></div></div>
       <h3>${tr('most_used')} <a href="#/phrases" class="more">${tr('see_all')} ›</a></h3>
       ${top.map(phraseCard).join('')}
-      <p class="muted small center">${tr('prototype')}</p>`;
+      <p class="muted small center">${tr('prototype')} · <a href="#/credits"><u>${tr('credits')}</u></a></p>`;
   },
 
   phrases() {
@@ -289,7 +292,7 @@ function phraseCard(p) {
 function chatBubble(m) {
   const text = m.k ? tr(m.k) : m.text;
   const acts = (m.actions || []).map(a => a.href ? `<a class="chip" target="_blank" rel="noopener" href="${esc(a.href)}">${esc(a.label)}</a>` : `<a class="chip" href="#/${a.view}">${esc(a.label)}</a>`).join('');
-  return `<div class="bubble ${m.me ? 'me' : ''}">${m.typing ? '<span class="dots"><i></i><i></i><i></i></span>' : esc(text)}${acts ? `<div class="acts">${acts}</div>` : ''}</div>`;
+  return `<div class="bubble ${m.me ? 'me' : ''}">${m.typing ? '<span class="dots"><i></i><i></i><i></i></span>' : esc(text)}${m.spot ? phSlot(m.spot, 'wide') : ''}${acts ? `<div class="acts">${acts}</div>` : ''}</div>`;
 }
 
 // ---------- post-render hooks ----------
@@ -468,13 +471,16 @@ function nearRow(type, p, big) {
 }
 async function fillNear(types, hostSel, big) {
   const host = $(hostSel); if (!host) return;
-  const res = await Promise.all(types.map(t => placesNear(t).then(r => [t, r.list[0]])));
-  const h = $(hostSel); if (!h) return;
-  h.innerHTML = res.filter(([, p]) => p).map(([t, p]) => nearRow(t, p, big)).join('') || `<small class="muted">${tr('nothing')}</small>`;
+  // each category fills in as soon as its own search returns (trash via OpenStreetMap can be slow)
+  host.innerHTML = types.map(t => `<div class="nslot" data-t="${t}"></div>`).join('');
+  types.forEach(t => placesNear(t).then(r => {
+    const slot = host.querySelector(`.nslot[data-t="${t}"]`);
+    if (slot && host.isConnected && r.list[0]) slot.innerHTML = nearRow(t, r.list[0], big);
+  }));
 }
 function sightsNear() {
   const list = SPOTS.map(s => ({ ...s, km: hav(st.pos, s) })).sort((a, b) => a.km - b.km).slice(0, 4);
-  return list.map(s => `<div class="box row"><div><b>${esc(nm(s))}</b><div class="small muted">${fmtDist(s.km)}</div></div><a class="btn" target="_blank" rel="noopener" href="${dirUrl(s, 'transit')}">${tr('go')} ▶</a></div>`).join('');
+  return list.map(s => `<div class="box row sightrow">${phSlot(s.id, 'thumb')}<div class="grow"><b>${esc(nm(s))}</b><div class="small muted">${fmtDist(s.km)}</div></div><a class="btn go" target="_blank" rel="noopener" href="${dirUrl(s, 'transit')}">${ICON.go}${tr('go')}</a></div>`).join('');
 }
 
 // ---------- extra views ----------
@@ -605,7 +611,7 @@ function aiReply(text) {
   const spot = SPOTS.find(s => s.keys.some(k => q.includes(k.toLowerCase())) || q.includes(s.en.toLowerCase()));
   const actions = a => a.map(([k, v]) => ({ label: tr(k), view: v }));
   if (spot) {
-    return { text: `${nm(spot)} — ${spot.d[L()]}`, actions: [{ label: tr('open_gmaps'), href: `https://www.google.com/maps/search/?api=1&query=${spot.lat},${spot.lng}` }, { label: tr('wait'), view: 'wait' }] };
+    return { spot: spot.id, text: `${nm(spot)} — ${spot.d[L()]}`, actions: [{ label: tr('open_gmaps'), href: `https://www.google.com/maps/search/?api=1&query=${spot.lat},${spot.lng}` }, { label: tr('wait'), view: 'wait' }] };
   }
   const it = INTENTS.find(i => i.re.test(q));
   if (it && it.suggest) {
@@ -628,7 +634,7 @@ function sendChat(text) {
   render();
   setTimeout(() => {
     const r = aiReply(text);
-    st.chat[st.chat.indexOf(typing)] = { me: false, text: r.text, actions: r.actions };
+    st.chat[st.chat.indexOf(typing)] = { me: false, text: r.text, actions: r.actions, spot: r.spot };
     if (view() === 'chat') render();
   }, 550);
 }
@@ -683,13 +689,48 @@ function planHtml(days) {
     return `<div class="box day"><b>${st.lang === 'ja' || st.lang === 'hi' ? `${i + 1}${tr('day')}` : `${tr('day')} ${i + 1}`}</b>
       ${d.rows.map(r => r.lunch ? `<div class="stop lunch"><time>${hm(r.time)}</time><div>🍜 ${tr('lunch')} <small>${tr('lunch_hint')}</small></div></div>` :
         `${r.trip ? `<div class="leg">🚃 ${yen(r.trip.fare)} · ~${r.trip.min} ${tr('min')}</div>` : ''}
-        <div class="stop"><time>${hm(r.time)}</time><div><b>${esc(nm(r.spot))}</b><small>${r.spot.d[L()]}</small><small>⏱ ${r.spot.mins} ${tr('min')} · ${r.spot.cost === 0 ? 'Free' : '¥'.repeat(r.spot.cost)}</small></div></div>`).join('')}
+        <div class="stop"><time>${hm(r.time)}</time><div class="grow">${phSlot(r.spot.id, 'wide')}<b>${esc(nm(r.spot))}</b><small>${r.spot.d[L()]}</small><small>⏱ ${r.spot.mins} ${tr('min')} · ${r.spot.cost === 0 ? 'Free' : '¥'.repeat(r.spot.cost)}</small></div></div>`).join('')}
       <a class="btn" target="_blank" rel="noopener" href="${url}">🗺 ${tr('show_route')}</a></div>`;
   }).join('') + `<p class="center"><b>${tr('total_fare')}: ${yen(total)}</b></p><p class="muted small">${tr('estimate_note')}</p>`;
 }
 
+// ---------- photos (Wikimedia Commons, free licences, cached on the device) ----------
+const photoCache = store.get('photos', {}), photoPending = {};
+const plain = h => new DOMParser().parseFromString(h || '', 'text/html').body.textContent.trim();
+async function fetchPhoto(title) {
+  const w = await (await fetch(`https://en.wikipedia.org/w/api.php?action=query&redirects=1&prop=pageimages&piprop=name&titles=${encodeURIComponent(title)}&format=json&origin=*`)).json();
+  const page = Object.values(w.query.pages)[0];
+  if (!page || !page.pageimage) return null;
+  const c = await (await fetch(`https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent('File:' + page.pageimage)}&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=640&format=json&origin=*`)).json();
+  const ii = (Object.values(c.query.pages)[0].imageinfo || [])[0];
+  if (!ii) return null;
+  const m = ii.extmetadata || {};
+  return { url: ii.thumburl || ii.url, page: ii.descriptionurl, artist: plain(m.Artist && m.Artist.value) || 'Unknown', license: plain(m.LicenseShortName && m.LicenseShortName.value) };
+}
+function spotPhoto(id) {
+  if (id in photoCache) return Promise.resolve(photoCache[id]);
+  const s = SPOTS.find(x => x.id === id);
+  if (!s || !s.wiki) return Promise.resolve(null);
+  if (!photoPending[id]) {
+    photoPending[id] = fetchPhoto(s.wiki).then(v => { photoCache[id] = v; store.set('photos', photoCache); return v; }).catch(() => null);
+  }
+  return photoPending[id];
+}
+const phSlot = (id, cls) => `<figure class="phslot ${cls}" data-spot="${id}"></figure>`;
+function hydratePhotos() {
+  document.querySelectorAll('.phslot:empty').forEach(el => {
+    spotPhoto(el.dataset.spot).then(p => {
+      if (!p || !el.isConnected) return;
+      const s = SPOTS.find(x => x.id === el.dataset.spot);
+      el.innerHTML = `<img src="${esc(p.url)}" alt="${esc(s.en)}" loading="lazy" referrerpolicy="no-referrer"><figcaption><a href="${esc(p.page)}" target="_blank" rel="noopener" title="${esc(p.artist)} · ${esc(p.license)}">📷 ${esc(p.artist)} · ${esc(p.license)}</a></figcaption>`;
+    });
+  });
+}
+VIEWS.credits = () => `<p class="muted">${tr('photos_note')}</p>${SPOTS.filter(s => photoCache[s.id]).map(s => { const p = photoCache[s.id]; return `<div class="box"><b>${esc(nm(s))}</b><small><a href="${esc(p.page)}" target="_blank" rel="noopener">${esc(p.artist)} · ${esc(p.license)}</a></small></div>`; }).join('') || `<p class="muted">${tr('nothing')}</p>`}`;
+
 // ---------- events ----------
 document.addEventListener('click', e => {
+  if (e.target.closest('figcaption')) return;
   const el = e.target.closest('[data-a]'); if (!el) return;
   const a = el.dataset.a, v = el.dataset.v;
   const A = {
@@ -730,6 +771,7 @@ document.addEventListener('click', e => {
     },
     acard() { const c = allergyCard(); if (!c) { el.textContent = tr('allergy_none'); return; } st.overlay = c; renderOverlay(); },
     spot() { const s = SPOTS.find(x => x.id === v); window.open(dirUrl(s, 'transit'), '_blank', 'noopener'); },
+    askspot() { go('chat'); sendChat(SPOTS.find(x => x.id === v).en); },
     hopt() { st.help = v; render(); },
     hback() { st.help = null; render(); },
     listenmic() { runListen(); },
