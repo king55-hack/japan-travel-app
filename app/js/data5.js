@@ -88,3 +88,6 @@ const DETAILS = {
 };
 const FEATURES_BOOK = [['book', 'book']];
 FEATURES.push(...FEATURES_BOOK);
+Object.assign(S, {
+  map_fail: ['The map could not be drawn on this device. The list below still works.', 'यो उपकरणमा नक्सा देखाउन सकिएन। तलको सूची चल्छ।', 'この端末では地図を表示できません。下のリストは使えます。', 'この たんまつでは ちずを ひょうじ できません。したの りすとは つかえます。'],
+});

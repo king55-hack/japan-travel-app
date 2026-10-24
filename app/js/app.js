@@ -258,6 +258,7 @@ async function initMapView() {
       google.maps.event.trigger(st.map, 'resize');
       st.map.setCenter(st.pos);
       ok = true;
+      setTimeout(() => { const b = $('#mapbox'); if (b && st.mapEl.parentNode === b && !st.mapEl.querySelector('.gm-style')) b.insertAdjacentHTML('beforeend', `<div class="mapfall over"><div class="pinbig">🗺️</div><p>${tr('map_fail')}</p><a class="btn go" target="_blank" rel="noopener" href="https://www.google.com/maps/search/${encodeURIComponent(PLACE_TYPES[st.mapType].q)}/@${st.pos.lat},${st.pos.lng},16z">${ICON.go}${tr('open_gmaps')}</a></div>`); }, 4000);
     } catch { ok = false; }
   }
   if (!ok && $('#mapbox')) {
@@ -275,9 +276,9 @@ function placesNear(type) {
   return nearCache.get(key);
 }
 async function fetchNear(type) {
-  let list = [];
+  let list = [], src = 'sample';
   try {
-    if (type === 'trash') list = await trashNear();
+    if (type === 'trash') { list = await trashNear(); if (list.length) src = 'osm'; }
     else if (API_KEY && !st.gmFail) {
       await loadGoogle();
       // Places API (New) must be enabled on the key's project
@@ -287,28 +288,45 @@ async function fetchNear(type) {
         ? await Place.searchByText({ textQuery: cfg.text, fields, locationBias: { center: st.pos, radius: 3000 }, maxResultCount: 12 })
         : await Place.searchNearby({ fields, locationRestriction: { center: st.pos, radius: 2000 }, includedPrimaryTypes: cfg.types || [cfg.type], maxResultCount: 12 });
       list = (places || []).map(p => ({ name: p.displayName, sub: p.formattedAddress, lat: p.location.lat(), lng: p.location.lng() }));
+      if (list.length) src = 'google';
     }
-  } catch (err) { console.warn('Nearby search failed, using sample data:', err.message || err); }
+  } catch (err) { console.warn('Google search failed, trying OpenStreetMap:', err.message || err); }
+  if (!list.length && type !== 'trash') {
+    try { list = await overpassNear(type); if (list.length) src = 'osm'; } catch (err) { console.warn('OpenStreetMap search failed:', err.message || err); }
+  }
   const sample = !list.length;
   if (sample) list = POI.filter(p => p.type === type).map(p => ({ name: nm(p), lat: p.lat, lng: p.lng }));
   list = list.map(p => ({ ...p, km: hav(st.pos, p) })).sort((a, b) => a.km - b.km);
   const close = list.filter(p => p.km < 30);
-  return { list: (close.length ? close : list).slice(0, 10), sample };
+  return { list: (close.length ? close : list).slice(0, 10), sample, src };
+}
+// OpenStreetMap (Overpass) lookup: free fallback when Google is unavailable (no key, quota used up, error)
+const OSM_TAGS = {
+  police: ['amenity=police'], hospital: ['amenity=hospital', 'amenity=clinic'], pharmacy: ['amenity=pharmacy'], shop: ['shop=convenience'], toilet: ['amenity=toilets'],
+  atm: ['amenity=atm'], exchange: ['amenity=bureau_de_change'], station: ['railway=station', 'station=subway'], hotel: ['tourism=hotel', 'tourism=hostel', 'tourism=guest_house'],
+  charge: ['amenity=device_charging_station'], rental: ['amenity=bicycle_rental'], locker: ['amenity=locker'], trash: ['amenity=waste_basket'],
+  veg: ['"diet:vegetarian"~"yes|only"'], halal: ['"diet:halal"~"yes|only"'], gf: ['"diet:gluten_free"="yes"'], hindu: ['cuisine=indian'],
+};
+async function overpassNear(type, radius = 1500) {
+  const tags = OSM_TAGS[type]; if (!tags) return [];
+  const { lat, lng } = st.pos;
+  const body = tags.map(t => `node(around:${radius},${lat},${lng})[${t}];way(around:${radius},${lat},${lng})[${t}];`).join('');
+  const q = encodeURIComponent(`[out:json][timeout:15];(${body});out center 25;`);
+  // public Overpass servers can be slow or busy: ask two in parallel and take the first good answer
+  const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 20000);
+  const ask = base => fetch(`${base}?data=${q}`, { signal: ctl.signal }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+  try {
+    const j = await Promise.any(['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'].map(ask));
+    const lang = st.lang === 'ja' || st.lang === 'hi' ? 'ja' : 'en';
+    return j.elements.map(e => ({ name: (e.tags && (e.tags['name:' + lang] || (lang === 'en' ? e.tags['name:en'] : '') || e.tags.name)) || null, lat: e.lat ?? (e.center && e.center.lat), lng: e.lon ?? (e.center && e.center.lon) })).filter(p => p.lat != null);
+  } finally { clearTimeout(to); ctl.abort(); }
 }
 // trash bins: OpenStreetMap (free, no key) + pins added by travellers on this device
 async function trashNear() {
   const here = st.pos;
   const pins = store.get('bins', []).filter(b => hav(here, b) < 1).map(b => ({ name: null, pin: b.t, lat: b.lat, lng: b.lng }));
   let osm = [];
-  try {
-    // public Overpass servers can be slow: ask two in parallel and take the first good answer
-    const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 20000);
-    const q = encodeURIComponent(`[out:json][timeout:15];node(around:800,${here.lat},${here.lng})[amenity=waste_basket];out 25;`);
-    const ask = base => fetch(`${base}?data=${q}`, { signal: ctl.signal }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
-    const j = await Promise.any(['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'].map(ask));
-    clearTimeout(to); ctl.abort();
-    osm = j.elements.map(e => ({ name: null, lat: e.lat, lng: e.lon }));
-  } catch (err) { console.warn('Overpass failed:', err.message || err); }
+  try { osm = await overpassNear('trash', 800); } catch (err) { console.warn('Overpass failed:', err.message || err); }
   return [...pins, ...osm];
 }
 const pname = (p, type) => (p.name || tr('c_' + type)) + (p.pin ? ' 📌' : '');
@@ -337,7 +355,7 @@ async function runMapSearch(useGoogle) {
     ${GROUPS.food.includes(type) ? `<p class="muted small">${tr('diet_note')}</p>` : ''}
     ${type === 'police' ? `<div class="two"><a class="btn sos" href="tel:110">📞 110</a><button class="btn" data-a="staff" data-v="police">🗣 ${tr('say_phrase')}</button></div>` : ''}
     ${type === 'trash' ? `<button class="btn" data-a="addbin">🗑️ ${tr('add_bin')}</button><p class="muted small">${tr('from_osm')}</p>` : ''}
-    ${sample ? `<p class="muted small">${tr('sample_poi_note')}</p>` : ''}${trust(sample ? 'demo' : 'real', 'map')}`;
+    ${sample ? `<p class="muted small">${tr('sample_poi_note')}</p>` : ''}${trust(sample ? 'demo' : 'real', 'map')}${r.src === 'osm' ? `<small class="muted">OpenStreetMap</small>` : ''}`;
 }
 
 // ---------- live location ----------
@@ -548,7 +566,9 @@ function allergyCard() {
 function searchAll(raw) {
   const q = raw.trim().toLowerCase();
   if (q.length < 2) return [];
-  const has = arr => arr.some(x => String(x).toLowerCase().includes(q));
+  const nrm = t => String(t).toLowerCase().replace(/[\s\-_.'’・]/g, '');
+  const nq = nrm(q);
+  const has = arr => arr.some(x => nrm(x).includes(nq));
   const out = [];
   if (on('map')) Object.keys(PLACE_TYPES).forEach(t => { if (has([...(S['c_' + t] || []), PLACE_TYPES[t].q])) out.push({ ic: PLACE_TYPES[t].icon, label: tr('c_' + t), sub: tr('map'), act: 'tomap', v: t }); });
   FEATURES.forEach(([v, k]) => { if ((v === 'help' || v === 'sos' || on(v === 'nearby' ? 'near' : v)) && has(S[k])) out.push({ ic: '➡️', label: tr(k), sub: '', act: 'nav', v }); });
@@ -584,7 +604,8 @@ const FALLBACK = ["Sorry, I don't know that yet (this is a demo). Try: a place n
 
 function aiReply(text) {
   const q = text.toLowerCase();
-  const spot = SPOTS.find(s => s.keys.some(k => q.includes(k.toLowerCase())) || q.includes(s.en.toLowerCase()));
+  const nq = q.replace(/[\s\-_.'’・]/g, '');
+  const spot = SPOTS.find(s => s.keys.some(k => nq.includes(k.toLowerCase().replace(/[\s\-]/g, ''))) || nq.includes(s.en.toLowerCase().replace(/[\s\-]/g, '')));
   const actions = a => a.map(([k, v]) => ({ label: tr(k), view: v }));
   if (spot) {
     return { spot: spot.id, text: `${nm(spot)} — ${spot.d[L()]}`, actions: [{ label: tr('open_gmaps'), href: `https://www.google.com/maps/search/?api=1&query=${spot.lat},${spot.lng}` }, { label: tr('wait'), view: 'wait' }] };
@@ -1205,7 +1226,7 @@ document.addEventListener('click', e => {
     preset() { st.prefs.off = PRESETS[v].slice(); store.set('prefs', st.prefs); render(); },
     zoom() { st.prefs.zoom = +v; store.set('prefs', st.prefs); applyZoom(); render(); },
     cleardata() {
-      ['prefs', 'bins', 'usage', 'photos', 'rates', 'holidays', 'theme'].forEach(k => { try { localStorage.removeItem(k); } catch { /* blocked */ } });
+      ['prefs', 'bins', 'usage', 'photos', 'rates', 'holidays', 'theme', 'bookings'].forEach(k => { try { localStorage.removeItem(k); } catch { /* blocked */ } });
       st.prefs = { allergens: [], diets: [], off: [] }; st.usage = {}; st.theme = 'auto'; applyTheme(); applyZoom();
       nearCache.clear(); el.textContent = '✓ ' + tr('cleared');
     },
