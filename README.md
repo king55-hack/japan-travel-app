@@ -1,9 +1,20 @@
-# Japan Travel (hackathon prototype)
+# Japan Travel
 
-"Nihon no ryokou wa kono hitotsu no apuri de" - one mobile web app for travelling in Japan.
-Languages: English, Nepali, Japanese, simple hiragana-only Japanese.
+<img src="app/logo.png" alt="Japan Travel logo: a torii gate in front of Mount Fuji with a network of connected dots" width="120" align="right">
 
-Not a real product: the AI guide, menu translation, wait times and trip planner are rule-based demos.
+**"Nihon no ryokou wa kono hitotsu no apuri de"** (travel in Japan with this one app)
+
+One mobile web app for travelling in Japan, in **English, Nepali, Japanese and simple hiragana-only Japanese**.
+A hackathon prototype, built solo.
+
+## Why
+
+Travelling or living in Japan without reading Japanese well means many small problems: who to call when something
+goes wrong, how to ask for help, what a menu says, where the nearest hospital or locker is, how much a train or taxi
+costs. This app puts those answers in one installable page, in the language the person uses, and always shows what is
+real data and what is only an estimate (see the table below).
+
+> Not a real product: the AI guide, menu translation, wait times and trip planner are rule-based demos.
 
 ## Run
 ```
@@ -43,3 +54,13 @@ Google key needs "Maps JavaScript API" and "Places API (New)"; "Geocoding API" i
 | AI Guide, trip plan | Rule based demo |
 
 Every screen shows a label for this and a reminder to confirm important things with staff or official sources.
+
+## Privacy and limits
+
+- There is no server of its own. Settings, pins and bookings stay in the browser of the device.
+- Looking for places near you sends your location to the services listed in the table above (Google Places only if
+  you add a key, OpenStreetMap Overpass for trash bins, Open-Meteo for weather).
+- Menu photos are read on the device (Tesseract.js) and are not uploaded.
+- It is not an official source. For an emergency in Japan call 110 (police) or 119 (fire and ambulance), and confirm
+  important things with staff or official sources.
+- `app/config.js` (your Google key) is ignored by Git and must never be committed.
